@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Selamat Malam Tuhan - Slow Pulsing Logo</title>
+    <!-- Font Pixel Art Retro -->
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        body {
+            background-color: #030305;
+            color: #ececec;
+            font-family: 'Press Start 2P', monospace;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        canvas {
+            display: block;
+            width: 90vw;
+            max-width: 1200px;
+            box-shadow: 0 0 35px rgba(255, 255, 255, 0.08);
+            image-rendering: pixelated;
+            border: 2px solid #14141a;
+        }
+
+        #controls-hint {
+            position: absolute;
+            bottom: 15px;
+            font-size: 0.7rem;
+            color: #777;
+            pointer-events: none;
+            text-shadow: 1px 1px 2px #000;
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <canvas id="gameCanvas"></canvas>
+    <div id="controls-hint"> </div>
+</div>
+
+<!-- Elemen Audio untuk Musik Latar -->
+<audio id="bgm" src="BGM.mp3" loop preload="auto"></audio>
+
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const bgm = document.getElementById('bgm');
+
+canvas.width = 960;
+canvas.height = 540;
+ctx.imageSmoothingEnabled = false;
+
+let gameState = 'START';
+let blinkTimer = 0;
+
+// 1. Pemuatan Aset Gambar
+const assets = {
+    player: new Image(),
+    dolar: new Image(),
+    god: new Image(),
+    logo: new Image()
+};
+
+assets.player.src = 'BODONG.png';
+assets.dolar.src = 'DOLAR.png';
+assets.god.src = 'SELAMAT MALAM TUHAN.png';
+assets.logo.src = 'LOGO.png';
+
+// POSISI JALAN TEPAT DI DASAR CANVAS
+const roadHeight = 18;
+const groundY = canvas.height - roadHeight; 
+const segmentWidth = 48;
+
+const player = {
+    x: 90,
+    y: groundY - 105,
+    width: 95,
+    height: 105,
+    speed: 2.0,
+    vx: 0
+};
+
+let cameraX = 0;
+const platforms = new Map();
+const particles = [];
+
+const dolars = [];
+function spawnDolar() {
+    dolars.push({
+        x: cameraX + canvas.width + Math.random() * 300,
+        y: 60 + Math.random() * 160,
+        width: 50,
+        height: 50,
+        speed: 0.8 + Math.random() * 0.7,
+        floatOffset: Math.random() * Math.PI * 2
+    });
+}
+
+const godEntity = {
+    x: 0,
+    y: 20,
+    width: 420,
+    height: 280,
+    opacity: 0,
+    targetOpacity: 0,
+    timer: 0,
+    visible: false
+};
+
+function getOrCreatePlatform(index) {
+    if (!platforms.has(index)) {
+        platforms.set(index, {
+            x: index * segmentWidth,
+            y: groundY,
+            width: segmentWidth,
+            height: roadHeight,
+            lit: false,
+            alpha: 0.1,
+            color: '#ffffff'
+        });
+    }
+    return platforms.get(index);
+}
+
+function startGame() {
+    if (gameState === 'START') {
+        gameState = 'PLAYING';
+        
+        // Memutar audio BGM saat pertama kali diklik/ditekan
+        if (bgm.paused) {
+            bgm.play().catch(e => {
+                console.log("Audio diblokir browser, membutuhkan interaksi pengguna:", e);
+            });
+        }
+    }
+}
+
+const keys = {};
+window.addEventListener('keydown', e => {
+    if (gameState === 'START') {
+        startGame();
+    }
+    keys[e.key] = true;
+});
+
+window.addEventListener('keyup', e => keys[e.key] = false);
+canvas.addEventListener('click', startGame);
+
+function update() {
+    // Kecepatan timer animasi logo
+    blinkTimer += 0.018;
+
+    if (gameState === 'START') return;
+
+    if (keys['ArrowRight'] || keys['d'] || keys['D']) {
+        player.vx = player.speed;
+    } else if (keys['ArrowLeft'] || keys['a'] || keys['A']) {
+        player.vx = -player.speed * 0.6;
+    } else {
+        player.vx = 0;
+    }
+
+    player.x += player.vx;
+    if (player.x < 30) player.x = 30;
+
+    cameraX = player.x - 150;
+
+    const minSegment = Math.floor((cameraX - 150) / segmentWidth);
+    const maxSegment = Math.floor((cameraX + canvas.width + 150) / segmentWidth);
+
+    for (let i = minSegment; i <= maxSegment; i++) {
+        const p = getOrCreatePlatform(i);
+
+        if (player.x + player.width > p.x && player.x < p.x + p.width) {
+            if (!p.lit) {
+                p.lit = true;
+            }
+        }
+
+        if (p.lit && p.alpha < 1) {
+            p.alpha += 0.025;
+        }
+    }
+
+    if (player.vx !== 0 && Math.random() < 0.6) {
+        particles.push({
+            x: player.x + (player.vx > 0 ? 15 : player.width - 15),
+            y: groundY - Math.random() * 6,
+            vx: (Math.random() - 0.5) * 1.5,
+            vy: -Math.random() * 1.2,
+            life: 1,
+            size: Math.random() * 3.5 + 1.5,
+            color: '#ffffff'
+        });
+    }
+
+    particles.forEach((pt, index) => {
+        pt.x += pt.vx;
+        pt.y += pt.vy;
+        pt.life -= 0.025;
+        if (pt.life <= 0) particles.splice(index, 1);
+    });
+
+    if (Math.random() < 0.015 && dolars.length < 5) {
+        spawnDolar();
+    }
+
+    dolars.forEach((d, index) => {
+        d.x -= d.speed;
+        d.floatOffset += 0.05;
+        if (d.x < cameraX - 150) dolars.splice(index, 1);
+    });
+
+    godEntity.timer++;
+    if (godEntity.timer > 400 && Math.random() < 0.005 && !godEntity.visible) {
+        godEntity.visible = true;
+        godEntity.targetOpacity = 0.35;
+        godEntity.x = cameraX + canvas.width - 380;
+        godEntity.timer = 0;
+    }
+
+    if (godEntity.visible) {
+        godEntity.opacity += (godEntity.targetOpacity - godEntity.opacity) * 0.015;
+        if (godEntity.opacity >= 0.3) {
+            godEntity.targetOpacity = 0;
+        }
+        if (godEntity.targetOpacity === 0 && godEntity.opacity <= 0.01) {
+            godEntity.opacity = 0;
+            godEntity.visible = false;
+        }
+    }
+}
+
+function draw() {
+    ctx.fillStyle = '#030305';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    if (gameState === 'START') {
+        // Siklus gelombang bernapas pelan (rentang 0.0 hingga 1.0)
+        const pulse = (Math.sin(blinkTimer * 1.2) + 1) / 2;
+        
+        // Transparansi logo memudar redup ke terang (0.2 hingga 1.0)
+        const logoOpacity = 0.2 + (pulse * 0.8);
+        
+        // Glow pendaran mengembang dan mengecil pelan (5px hingga 30px)
+        const logoGlow = 5 + (pulse * 25);
+
+        if (assets.logo.complete && assets.logo.naturalWidth !== 0) {
+            const logoWidth = 380;
+            const logoHeight = (assets.logo.height / assets.logo.width) * logoWidth;
+            const logoX = (canvas.width / 2) - (logoWidth / 2);
+            const logoY = (canvas.height / 2) - (logoHeight / 2) - 30;
+
+            ctx.save();
+            ctx.globalAlpha = logoOpacity;
+            ctx.shadowColor = "rgba(255, 255, 255, 0.8)";
+            ctx.shadowBlur = logoGlow;
+            ctx.drawImage(assets.logo, Math.floor(logoX), Math.floor(logoY), Math.floor(logoWidth), Math.floor(logoHeight));
+            ctx.restore();
+        } else {
+            ctx.save();
+            ctx.globalAlpha = logoOpacity;
+            ctx.shadowColor = "rgba(255, 255, 255, 0.8)";
+            ctx.shadowBlur = logoGlow;
+            ctx.fillStyle = "#ffffff";
+            ctx.font = "bold 24px 'Courier New', monospace";
+            ctx.textAlign = "center";
+            ctx.fillText("SELAMAT MALAM TUHAN", canvas.width / 2, canvas.height / 2 - 20);
+            ctx.restore();
+        }
+
+        // Teks petunjuk berkedip dengan ritme biasa
+        if (Math.sin(blinkTimer * 4) > 0) {
+            ctx.fillStyle = "#ffffff";
+            ctx.font = "12px 'Press Start 2P', monospace";
+            ctx.textAlign = "center";
+            ctx.shadowColor = "rgba(0, 0, 0, 0.8)";
+            ctx.shadowBlur = 6;
+            ctx.fillText("TEKAN TOMBOL ATAU TAP UNTUK MEMULAI", canvas.width / 2, canvas.height - 80);
+            ctx.shadowBlur = 0;
+        }
+        return;
+    }
+
+    if (godEntity.visible && assets.god.complete) {
+        ctx.save();
+        ctx.globalCompositeOperation = 'screen';
+        ctx.globalAlpha = godEntity.opacity;
+        
+        ctx.shadowColor = "rgba(255, 255, 255, 0.4)";
+        ctx.shadowBlur = 15;
+
+        const godScreenX = godEntity.x - cameraX;
+        ctx.drawImage(assets.god, Math.floor(godScreenX), Math.floor(godEntity.y), godEntity.width, godEntity.height);
+        
+        ctx.restore();
+    }
+
+    ctx.save();
+    const roundedCamX = Math.floor(cameraX);
+    ctx.translate(-roundedCamX, 0);
+
+    dolars.forEach(d => {
+        if (assets.dolar.complete) {
+            ctx.save();
+            ctx.shadowColor = "rgba(255, 255, 255, 0.5)";
+            ctx.shadowBlur = 10;
+            const floatY = d.y + Math.sin(d.floatOffset) * 8;
+            ctx.drawImage(assets.dolar, Math.floor(d.x), Math.floor(floatY), d.width, d.height);
+            ctx.restore();
+        }
+    });
+
+    const minSegment = Math.floor((cameraX - 150) / segmentWidth);
+    const maxSegment = Math.floor((cameraX + canvas.width + 150) / segmentWidth);
+
+    for (let i = minSegment; i <= maxSegment; i++) {
+        const p = getOrCreatePlatform(i);
+        
+        ctx.save();
+        ctx.globalAlpha = p.alpha;
+        
+        const drawX = Math.floor(p.x);
+        const drawW = Math.ceil(p.width) + 1.5;
+
+        if (p.lit) {
+            ctx.shadowColor = "rgba(255, 255, 255, 0.6)";
+            ctx.shadowBlur = 12;
+            ctx.fillStyle = "#ffffff";
+            ctx.fillRect(drawX, p.y, drawW, 3);
+
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = '#161722';
+            ctx.fillRect(drawX, p.y + 3, drawW, p.height - 3);
+        } else {
+            ctx.fillStyle = '#10111a';
+            ctx.fillRect(drawX, p.y, drawW, p.height);
+        }
+        
+        ctx.restore();
+    }
+
+    particles.forEach(pt => {
+        ctx.save();
+        ctx.shadowColor = "rgba(255, 255, 255, 0.8)";
+        ctx.shadowBlur = 6;
+        ctx.fillStyle = pt.color;
+        ctx.globalAlpha = pt.life;
+        ctx.fillRect(Math.floor(pt.x), Math.floor(pt.y), pt.size, pt.size);
+        ctx.restore();
+    });
+
+    if (assets.player.complete) {
+        ctx.save();
+        ctx.shadowColor = "rgba(255, 255, 255, 0.3)";
+        ctx.shadowBlur = 20;
+        ctx.drawImage(assets.player, Math.floor(player.x), Math.floor(player.y), player.width, player.height);
+        
+        ctx.shadowColor = "rgba(255, 255, 255, 0.7)";
+        ctx.shadowBlur = 8;
+        ctx.drawImage(assets.player, Math.floor(player.x), Math.floor(player.y), player.width, player.height);
+        ctx.restore();
+    } else {
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(Math.floor(player.x), Math.floor(player.y), player.width, player.height);
+    }
+
+    ctx.restore();
+}
+
+function loop() {
+    update();
+    draw();
+    requestAnimationFrame(loop);
+}
+
+loop();
+</script>
+</body>
+</html>
