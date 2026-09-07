@@ -9,6 +9,10 @@
   <link rel="icon" type="image/png" href="ICON WEB.png">
   <link rel="shortcut icon" type="image/png" href="ICON WEB.png">
   
+  <!-- VERCEL SPEED INSIGHTS & ANALYTICS -->
+  <script defer src="/_vercel/speed-insights/script.js"></script>
+  <script defer src="/_vercel/insights/script.js"></script>
+  
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
   <style>
     * {
@@ -549,6 +553,61 @@
     }
 
     /* ========================================================= */
+    /* FLOATING MUSIC WIDGET KANAN BAWAH                         */
+    /* ========================================================= */
+    .music-widget-container {
+      position: absolute;
+      bottom: 12px;
+      right: 16px;
+      width: 450px;
+      max-width: calc(100vw - 32px);
+      background: #c0c0c0;
+      border-top: 3px solid #ffffff;
+      border-left: 3px solid #ffffff;
+      border-right: 3px solid #000000;
+      border-bottom: 3px solid #000000;
+      box-shadow: 5px 5px 0px #000000;
+      padding: 6px;
+      z-index: 38;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .music-widget-header {
+      font-size: 8px;
+      color: #000080;
+      font-weight: bold;
+      text-align: center;
+      background: #e0e0e0;
+      border: 1px solid #808080;
+      padding: 5px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .music-widget-iframe {
+      width: 100%;
+      height: 175px;
+      border: 2px solid #000;
+      background: #000;
+      display: block;
+    }
+
+    /* Sembunyikan player saat game dimainkan */
+    .nes-menu-overlay.hidden ~ .music-widget-container {
+      display: none;
+    }
+
+    @media (max-width: 768px) {
+      .music-widget-container {
+        width: 300px;
+        bottom: 8px;
+        right: 8px;
+      }
+    }
+
+    /* ========================================================= */
     /* BOTTOM TOOLBAR                                            */
     /* ========================================================= */
     .bottom-toolbar {
@@ -759,6 +818,14 @@
         <button class="nav-arrow-btn" onclick="scrollCarousel(1)">►</button>
       </div>
 
+    </div>
+
+    <!-- FLOATING APPLE MUSIC PLAYER -->
+    <div class="music-widget-container">
+      <div class="music-widget-header">
+        🎵 LISTEN TO THEIR ALBUM TOO!
+      </div>
+      <iframe class="music-widget-iframe" allow="autoplay *; encrypted-media *;" frameborder="0" sandbox="allow-forms allow-popups allow-same-origin allow-scripts allow-storage-access-by-user-activation allow-top-navigation-by-user-activation" src="https://embed.music.apple.com/id/album/melankolia-radikal/6801554707"></iframe>
     </div>
 
     <!-- IFRAME GAME -->
@@ -1056,7 +1123,7 @@
           </div>
         </div>
 
-        <!-- PANEL PENJELASAN DESKRIPSI TIDAK KEPOTONG -->
+        <!-- PANEL PENJELASAN DESKRIPSI -->
         <div class="card-info-tooltip">
           <div class="info-row">
             <span class="info-label">GENRE:</span>
@@ -1135,7 +1202,6 @@
       nesMenu.classList.remove('hidden');
       gameFrame.src = "";
 
-      // RESET SELECTION SUPAYA NGGA STUCK & TOOLTIP NGGA TUMPANG TINDIH
       selectedIndex = -1;
       const containers = document.querySelectorAll('.nes-card-container');
       containers.forEach(c => c.classList.remove('selected'));
