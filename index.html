@@ -594,7 +594,20 @@
       display: block;
     }
 
-    /* Sembunyikan player saat game dimainkan */
+    /* RETRO NOTES DI BAWAH PLAYER */
+    .music-note-banner {
+      background: #ffff00;
+      color: #000;
+      font-size: 7px;
+      line-height: 1.5;
+      font-weight: bold;
+      text-align: center;
+      border: 2px solid #000;
+      padding: 6px 4px;
+      box-shadow: inset 1px 1px 0px #fff;
+    }
+
+    /* Sembunyikan player & photo credit saat game dimainkan */
     .nes-menu-overlay.hidden ~ .music-widget-container,
     .nes-menu-overlay.hidden ~ .credit-widget-container {
       display: none;
@@ -918,6 +931,11 @@
         🎵 LISTEN TO THEIR ALBUM TOO!
       </div>
       <iframe class="music-widget-iframe" allow="autoplay *; encrypted-media *;" frameborder="0" height="250" sandbox="allow-forms allow-popups allow-same-origin allow-scripts allow-storage-access-by-user-activation allow-top-navigation-by-user-activation" src="https://embed.music.apple.com/id/album/melankolia-radikal/6801554707"></iframe>
+      
+      <!-- RETRO NOTE BANNER -->
+      <div class="music-note-banner">
+        [!] PAUSE LAGU SEBELUM MEMULAI GAME!
+      </div>
     </div>
 
     <!-- FLOATING CREDIT PHOTO WIDGET (KIRI BAWAH) -->
