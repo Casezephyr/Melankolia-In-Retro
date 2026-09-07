@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Penyesalan > Kelahiran — Retro JRPG</title>
+    <!-- Import Font Pixel Retro -->
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            image-rendering: pixelated;
+        }
+
+        body {
+            background: url('BG.png') no-repeat center center fixed;
+            background-size: cover;
+            color: #d1f5e8;
+            font-family: 'Press Start 2P', monospace;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 15px;
+            position: relative;
+        }
+
+        /* EFEK FLASH PUTIH KETIKA SALAH / PILIH JAWABAN BERAT */
+        #flash-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: #ffffff;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 999;
+            transition: opacity 0.15s ease-in-out;
+        }
+
+        .flash-active {
+            opacity: 0.85 !important;
+        }
+
+        /* Container Layar Utama Diperbesar */
+        #game-window {
+            width: 100%;
+            max-width: 1100px;
+            height: 760px;
+            background: url('BG.png') no-repeat center center;
+            background-size: cover;
+            border: 6px solid #1c3d32;
+            box-shadow: 0 0 35px rgba(0, 0, 0, 0.95);
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Border Ornaments Retro Green dengan Background BG.png */
+        .retro-border {
+            border: 4px solid #1a382e;
+            outline: 2px solid #54806a;
+            background: url('BG.png') no-repeat center center;
+            background-size: cover;
+            box-shadow: inset 0 0 0 2px #07120e;
+            border-radius: 4px;
+        }
+
+        /* LAYAT ATAS DIpertinggi */
+        #top-layout {
+            display: flex;
+            gap: 12px;
+            height: 550px;
+            width: 100%;
+        }
+
+        /* CANVAS KARAKTER UTAMA DIPERBESAR (flex: 4.5) */
+        #character-viewport {
+            flex: 4.5;
+            height: 100%;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            background: #1c7d81 !important; /* Solid Teal */
+            overflow: hidden;
+        }
+
+        #character-viewport img {
+            max-height: 100%;
+            max-width: 100%;
+            height: 100%;
+            object-fit: contain;
+            object-position: bottom center;
+            filter: none;
+        }
+
+        /* Panel Status Kanan */
+        #right-status-panel {
+            flex: 1;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        /* Box Status RPG */
+        .stats-card {
+            padding: 16px 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            font-size: 9px;
+            color: #a8e0cb;
+        }
+
+        .bar-container {
+            width: 100%;
+            height: 12px;
+            background-color: rgba(6, 20, 16, 0.8);
+            border: 2px solid #3b6653;
+            margin-top: 6px;
+        }
+
+        .bar-fill {
+            height: 100%;
+            width: 10%;
+            transition: width 0.3s steps(5);
+        }
+
+        #despair-bar { background-color: #d13b3b; }
+        #awareness-bar { background-color: #2e8bbf; }
+
+        /* Box Indikator Ekspresi Karakter */
+        #expression-portrait-box {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 0;
+            overflow: hidden;
+            position: relative;
+        }
+
+        #expression-portrait-box img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            filter: none;
+        }
+
+        /* LAYOUT BAWAH */
+        #bottom-layout {
+            display: flex;
+            gap: 12px;
+            height: 160px;
+            width: 100%;
+        }
+
+        /* Box Dialog Utama */
+        #dialogue-card {
+            flex: 4.5;
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            overflow-y: auto;
+        }
+
+        #speaker-title {
+            color: #e67e22;
+            font-size: 9px;
+            margin-bottom: 8px;
+            letter-spacing: 1px;
+        }
+
+        #story-text {
+            font-size: 9px;
+            line-height: 2;
+            color: #ffffff;
+            white-space: pre-wrap;
+            word-spacing: 2px;
+        }
+
+        /* Box Pilihan Jawaban */
+        #choices-card {
+            flex: 1;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            overflow-y: auto;
+        }
+
+        #choices-container {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .choice-btn {
+            background: transparent;
+            border: none;
+            text-align: left;
+            font-family: 'Press Start 2P', monospace;
+            font-size: 8px;
+            line-height: 1.6;
+            color: #8bbfa9;
+            cursor: pointer;
+            display: flex;
+            align-items: flex-start;
+            gap: 6px;
+        }
+
+        .choice-btn:hover {
+            color: #ffffff;
+        }
+
+        .choice-btn::before {
+            content: "▶";
+            color: #e67e22;
+            opacity: 0;
+        }
+
+        .choice-btn:hover::before {
+            opacity: 1;
+        }
+
+        #restart-btn {
+            display: none;
+            width: 100%;
+            background-color: #d13b3b;
+            color: #ffffff;
+            border: 2px solid #ffffff;
+            padding: 10px;
+            font-family: inherit;
+            font-size: 8px;
+            cursor: pointer;
+            text-align: center;
+        }
+
+        #restart-btn:hover {
+            background-color: #a82828;
+        }
+
+        /* LAYAR START OVERLAY */
+        #start-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: url('BG.png') no-repeat center center;
+            background-size: cover;
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 35px;
+            padding: 30px;
+        }
+
+        #start-logo {
+            max-width: 95%;
+            max-height: 320px;
+            object-fit: contain;
+        }
+
+        #start-btn-trigger {
+            background: rgba(6, 20, 16, 0.85);
+            border: 4px solid #1c3d32;
+            outline: 2px solid #54806a;
+            color: #ffffff;
+            padding: 16px 28px;
+            font-family: 'Press Start 2P', monospace;
+            font-size: 11px;
+            cursor: pointer;
+            letter-spacing: 2px;
+            animation: blink 1.2s infinite;
+        }
+
+        #start-btn-trigger:hover {
+            background-color: #1c7d81;
+            color: #ffffff;
+            animation: none;
+        }
+
+        /* LAYAR LOG OVERLAY */
+        #log-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: url('BG.png') no-repeat center center;
+            background-size: cover;
+            z-index: 90;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 40px;
+        }
+
+        .log-box-screen {
+            width: 100%;
+            max-width: 700px;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        #log-title {
+            color: #e67e22;
+            font-size: 10px;
+            letter-spacing: 1px;
+        }
+
+        #log-body-text {
+            font-size: 10px;
+            line-height: 2.2;
+            color: #ffffff;
+            white-space: pre-wrap;
+            min-height: 80px;
+        }
+
+        #continue-btn {
+            align-self: flex-end;
+            background: rgba(6, 20, 16, 0.85);
+            border: 2px solid #54806a;
+            color: #8bbfa9;
+            padding: 12px 20px;
+            font-family: 'Press Start 2P', monospace;
+            font-size: 9px;
+            cursor: pointer;
+            display: none;
+        }
+
+        #continue-btn:hover {
+            background-color: #1c7d81;
+            color: #ffffff;
+            border-color: #ffffff;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ELEMEN EFEK FLASH PUTIH -->
+    <div id="flash-overlay"></div>
+
+    <!-- ELEMEN AUDIO BGM (LOOPING) -->
+    <audio id="bgm-audio" src="bgm.mp3" loop></audio>
+
+    <div id="game-window">
+        <!-- LAYAR START OVERLAY -->
+        <div id="start-overlay">
+            <img id="start-logo" src="LOGO.png" alt="Logo Penyesalan Kelahiran">
+            <button id="start-btn-trigger" onclick="pressStart()">PRESS START TO PLAY</button>
+        </div>
+
+        <!-- LAYAR LOG OVERLAY -->
+        <div id="log-overlay">
+            <div class="retro-border log-box-screen">
+                <div id="log-title">[ LOG INCOMING ]</div>
+                <div id="log-body-text"></div>
+                <button id="continue-btn" onclick="enterGame()">▶ LANJUTKAN</button>
+            </div>
+        </div>
+
+        <!-- LAYOUT ATAS -->
+        <div id="top-layout">
+            <!-- Canvas Scene Utama Karakter -->
+            <div class="retro-border" id="character-viewport">
+                <img id="main-char-img" src="KARAKTER 1.png" alt="Si Penanya">
+            </div>
+
+            <!-- Panel Status Kanan -->
+            <div id="right-status-panel">
+                <div class="retro-border stats-card">
+                    <div>
+                        <span>RASA CAPEK:</span>
+                        <div class="bar-container">
+                            <div id="despair-bar" class="bar-fill"></div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <span>SADAR EKSISTENSI:</span>
+                        <div class="bar-container">
+                            <div id="awareness-bar" class="bar-fill"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Indikator Ekspresi Dinamis -->
+                <div class="retro-border" id="expression-portrait-box">
+                    <img id="expression-img" src="EKS MONOTON.png" alt="Ekspresi Karakter">
+                </div>
+            </div>
+        </div>
+
+        <!-- LAYOUT BAWAH -->
+        <div id="bottom-layout">
+            <!-- Box Dialog Utama -->
+            <div class="retro-border" id="dialogue-card">
+                <div>
+                    <div id="speaker-title">[ SI PENANYA ]</div>
+                    <div id="story-text"></div>
+                </div>
+            </div>
+
+            <!-- Box Pilihan Jawaban / Aksi -->
+            <div class="retro-border" id="choices-card">
+                <div id="choices-container"></div>
+                <button id="restart-btn" onclick="startGame()">▶ RESTART</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let despair = 10;
+        let awareness = 10;
+        let isTyping = false;
+
+        const introLogText = "Suatu pagi kamu sedang pergi di tengah langit Jakarta yang mendung...\n\nTiba-tiba jalanmu dihadang oleh seseorang yang membawa keresahan zaman.";
+
+        // STORY NODES DIPERBANYAK AGAR ALUR JAUH LEBIH PANJANG & BERCABANG
+        const storyNodes = {
+            1: {
+                speaker: "[ SI PENANYA ]",
+                text: "Hei... Kenapa kita terus-terusan bertanya, untuk apa melacurkan dunia?",
+                expression: "EKS MONOTON.png",
+                choices: [
+                    { text: "Bekerja keras demi wewangian & baju layak.", nextNode: 2, despair: 15, awareness: 0, isWrong: true },
+                    { text: "Berhenti sejenak, aku juga mikir hal yang sama.", nextNode: 3, despair: 0, awareness: 20, isWrong: false },
+                    { text: "Tidur lagi aja, pusing mikirinnya.", nextNode: 4, despair: 10, awareness: 5, isWrong: true }
+                ]
+            },
+            2: {
+                speaker: "[ SI PENANYA ]",
+                text: "Baju rapi, aroma harum... Tapi di jalanan macet, kenapa mukamu makin hampa?",
+                expression: "EKS MAU MARAH.png",
+                choices: [
+                    { text: "Abaikan rasa hampa, yang penting bertahan hidup.", nextNode: 5, despair: 20, awareness: 0, isWrong: true },
+                    { text: "Ingat kata Soe Hok Gie: Beruntunglah yang tak lahir.", nextNode: 6, despair: 10, awareness: 20, isWrong: false }
+                ]
+            },
+            3: {
+                speaker: "[ SI PENANYA ]",
+                text: "Baguslah kalau kamu mulai merenung. Tapi apakah kesadaran ini mengubah nasib kita di kota ini?",
+                expression: "EKS SENANG.png",
+                choices: [
+                    { text: "Entahlah, rasanya kita cuma terjebak.", nextNode: 6, despair: 15, awareness: 10, isWrong: true },
+                    { text: "Setidaknya kita tahu kita tidak sendirian.", nextNode: 7, despair: 0, awareness: 25, isWrong: false }
+                ]
+            },
+            4: {
+                speaker: "[ SI PENANYA ]",
+                text: "Lari dari kenyataan tidak akan menghapus polusi dan penat di kepala.",
+                expression: "EKS MARAH.png",
+                choices: [
+                    { text: "Bawel banget, biarin aku istirahat!", nextNode: 8, despair: 25, awareness: 0, isWrong: true },
+                    { text: "Maaf... Aku cuma kelelahan.", nextNode: 5, despair: 10, awareness: 10, isWrong: false }
+                ]
+            },
+            5: {
+                speaker: "[ SI PENANYA ]",
+                text: "Bertahan hidup demi rutinitas tanpa makna... Sampai kapan lingkaran setan ini berlanjut?",
+                expression: "EKS MAU MARAH.png",
+                choices: [
+                    { text: "Sampai tua nanti, mau gimana lagi?", nextNode: 9, despair: 30, awareness: 0, isWrong: true },
+                    { text: "Mungkin kita harus mencari cara lain.", nextNode: 7, despair: 5, awareness: 25, isWrong: false }
+                ]
+            },
+            6: {
+                speaker: "[ SI PENANYA ]",
+                text: "Soe Hok Gie ada benarnya kan? Beruntunglah mereka yang tak pernah lahir ke dunia bising ini.",
+                expression: "EKS SENANG.png",
+                choices: [
+                    { text: "Iya, aku nyesel harus ngadepin semua ini.", nextNode: 10, despair: 25, awareness: 10, isWrong: true },
+                    { text: "Tapi... Apa benar ada cahaya dari surga?", nextNode: 11, despair: 0, awareness: 25, isWrong: false }
+                ]
+            },
+            7: {
+                speaker: "[ SI PENANYA ]",
+                text: "Kawan lama pernah bilang: Kita adalah bunga di tempat yang terbuang.",
+                expression: "EKS SENANG.png",
+                choices: [
+                    { text: "Bunga yang layu karena polusi kota.", nextNode: 10, despair: 20, awareness: 5, isWrong: true },
+                    { text: "Tapi kita tetap bisa tumbuh melawan arah.", nextNode: 12, despair: 0, awareness: 30, isWrong: false }
+                ]
+            },
+            8: {
+                speaker: "[ SI PENANYA ]",
+                text: "Kemarahan tidak akan menyelesaikan apa-apa jika hatimu sudah menyerah.",
+                expression: "EKS MARAH.png",
+                choices: [
+                    { text: "Diam kamu! Aku benci keadaan ini!", nextNode: 13, despair: 35, awareness: 0, isWrong: true },
+                    { text: "Tarik napas... Baiklah, katakan apa maumu.", nextNode: 6, despair: 10, awareness: 15, isWrong: false }
+                ]
+            },
+            9: {
+                speaker: "[ SI PENANYA ]",
+                text: "Jika pasrah adalah pilihanmu, maka malam ini gelap gulita akan menelanmu bulat-bulat.",
+                expression: "EKS MARAH.png",
+                choices: [
+                    { text: "Tenggelamkan saja aku sekarang.", nextNode: 14, despair: 40, awareness: 0, isWrong: true },
+                    { text: "Tunggu! Aku masih ingin melawan!", nextNode: 12, despair: 10, awareness: 25, isWrong: false }
+                ]
+            },
+            10: {
+                speaker: "[ SI PENANYA ]",
+                text: "Kamu terpaku tajam pada kejamnya realitas... Apakah keputusasaan ini akhir segalanya?",
+                expression: "EKS MARAH.png",
+                choices: [
+                    { text: "Ya, biarkan semuanya berakhir di sini.", nextNode: 14, despair: 50, awareness: 0, isWrong: true },
+                    { text: "Tidak! Aku harus bangkit dari abu.", nextNode: 12, despair: 5, awareness: 30, isWrong: false }
+                ]
+            },
+            11: {
+                speaker: "[ SI PENANYA ]",
+                text: "Cahaya dari surga itu semu. Yang nyata adalah keringat dan kerja paksa di bumi.",
+                expression: "EKS MONOTON.png",
+                choices: [
+                    { text: "Kalau begitu buat apa kita hidup?", nextNode: 10, despair: 30, awareness: 10, isWrong: true },
+                    { text: "Kita ciptakan cahaya kita sendiri!", nextNode: 12, despair: 0, awareness: 35, isWrong: false }
+                ]
+            },
+            12: {
+                speaker: "[ SI PENANYA ]",
+                text: "Api mulai menyala dari kerak bumi! Keresahan ini berubah menjadi perlawanan batin.",
+                expression: "EKS SENANG.png",
+                choices: [
+                    { text: "Wujudkan mimpi bersama kawan-kawan!", nextNode: 16, despair: 0, awareness: 40, isWrong: false },
+                    { text: "Bakar bualan dunia ini sampai habis!", nextNode: 15, despair: 0, awareness: 40, isWrong: false }
+                ]
+            },
+            13: {
+                speaker: "[ SI PENANYA ]",
+                text: "Kemarahanmu membakar dirimu sendiri tanpa menyentuh sistem yang rusak.",
+                expression: "EKS MARAH.png",
+                choices: [
+                    { text: "Terus aku harus berbuat apa lagi?!", nextNode: 9, despair: 25, awareness: 10, isWrong: true },
+                    { text: "Aku minta maaf, mari bicarakan baik-baik.", nextNode: 7, despair: 5, awareness: 20, isWrong: false }
+                ]
+            },
+
+            // ENDINGS
+            14: {
+                speaker: "[ ENDING ]",
+                text: "ENDING 1: BERAKHIR DI SINI\n\nKamu memilih pasrah pada keputusasaan. Hari-hari berlalu hampa, tertelan polusi dan kenangan kelam Jakarta.",
+                expression: "EKS MARAH.png",
+                isEnd: true
+            },
+            15: {
+                speaker: "[ ENDING ]",
+                text: "ENDING 2: API KERAK BUMI\n\nApi perlawanan menyala dari kerak bumi! Kamu dan Si Penanya berhasil membebaskan diri dari jerat bualan dunia modern.",
+                expression: "EKS SENANG.png",
+                isEnd: true
+            },
+            16: {
+                speaker: "[ ENDING ]",
+                text: "ENDING 3: BUNGA YANG TERBUANG\n\nMeski berada di tempat pembuangan, kalian menemukan makna hidup yang sesungguhnya melalui kebersamaan dan karya.",
+                expression: "EKS SENANG.png",
+                isEnd: true
+            }
+        };
+
+        function triggerFlash() {
+            const flash = document.getElementById('flash-overlay');
+            flash.classList.add('flash-active');
+            setTimeout(() => {
+                flash.classList.remove('flash-active');
+            }, 150);
+        }
+
+        function playBGM() {
+            const bgm = document.getElementById('bgm-audio');
+            if (bgm) {
+                bgm.volume = 0.6;
+                bgm.play().catch(err => {
+                    console.log("Autoplay dicegah browser:", err);
+                });
+            }
+        }
+
+        function pressStart() {
+            playBGM();
+            document.getElementById('start-overlay').style.display = 'none';
+            document.getElementById('log-overlay').style.display = 'flex';
+            
+            typeTextCustom(document.getElementById('log-body-text'), introLogText, () => {
+                document.getElementById('continue-btn').style.display = 'block';
+            });
+        }
+
+        function enterGame() {
+            document.getElementById('log-overlay').style.display = 'none';
+            startGame();
+        }
+
+        function startGame() {
+            despair = 10;
+            awareness = 10;
+            document.getElementById('restart-btn').style.display = 'none';
+            document.getElementById('choices-container').style.display = 'flex';
+            updateBars();
+            renderNode(1);
+        }
+
+        function updateBars() {
+            document.getElementById('despair-bar').style.width = Math.min(despair, 100) + '%';
+            document.getElementById('awareness-bar').style.width = Math.min(awareness, 100) + '%';
+        }
+
+        function setExpression(imgFile) {
+            const expImg = document.getElementById('expression-img');
+            expImg.src = imgFile;
+        }
+
+        function typeTextCustom(targetEl, text, callback) {
+            targetEl.innerText = '';
+            let index = 0;
+
+            const timer = setInterval(() => {
+                targetEl.innerText += text[index];
+                index++;
+                if (index >= text.length) {
+                    clearInterval(timer);
+                    if (callback) callback();
+                }
+            }, 20);
+        }
+
+        function renderNode(nodeIndex) {
+            const node = storyNodes[nodeIndex];
+            const choicesEl = document.getElementById('choices-container');
+            const speakerEl = document.getElementById('speaker-title');
+            
+            choicesEl.innerHTML = '';
+            speakerEl.innerText = node.speaker || "[ SI PENANYA ]";
+
+            setExpression(node.expression);
+
+            typeTextCustom(document.getElementById('story-text'), node.text, () => {
+                if (node.isEnd) {
+                    choicesEl.style.display = 'none';
+                    document.getElementById('restart-btn').style.display = 'block';
+                    return;
+                }
+
+                node.choices.forEach(choice => {
+                    const btn = document.createElement('button');
+                    btn.className = 'choice-btn';
+                    btn.innerText = choice.text;
+                    btn.onclick = () => {
+                        // Jika pemain memilih opsi salah/pesimis, aktifkan efek flash putih
+                        if (choice.isWrong) {
+                            triggerFlash();
+                        }
+
+                        despair += choice.despair;
+                        awareness += choice.awareness;
+                        updateBars();
+                        renderNode(choice.nextNode);
+                    };
+                    choicesEl.appendChild(btn);
+                });
+            });
+        }
+    </script>
+</body>
+</html>
