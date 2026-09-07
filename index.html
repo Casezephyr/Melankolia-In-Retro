@@ -1124,6 +1124,12 @@
     function openMenu() {
       nesMenu.classList.remove('hidden');
       gameFrame.src = "";
+
+      // RESET SELECTION SUPAYA NGGA STUCK & TOOLTIP NGGA TUMPANG TINDIH
+      selectedIndex = -1;
+      const containers = document.querySelectorAll('.nes-card-container');
+      containers.forEach(c => c.classList.remove('selected'));
+      selectedTitle.textContent = "Melankolia In Retro";
     }
 
     function toggleCredits() {
