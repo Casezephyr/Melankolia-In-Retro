@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kisah Sedih Kontemporer (Air & Api)</title>
+  <!-- Import Font Pixel Retro -->
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    
+    body {
+      background-color: #030805;
+      background-image: 
+        radial-gradient(circle, rgba(51, 255, 153, 0.15) 1px, transparent 1px),
+        linear-gradient(rgba(3, 8, 5, 0.75), rgba(3, 8, 5, 0.75)),
+        url('MAP3.png');
+      background-size: 4px 4px, cover, cover;
+      background-position: center;
+      background-repeat: repeat, no-repeat, no-repeat;
+      background-attachment: fixed;
+      
+      color: #fff;
+      font-family: 'Press Start 2P', monospace;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      overflow: hidden;
+      image-rendering: pixelated;
+    }
+
+    #gameCanvas {
+      border: 5px solid #33ff99;
+      box-shadow: none;
+      background-color: rgba(17, 17, 17, 0.9);
+      image-rendering: pixelated;
+      
+      width: 95vw;
+      max-width: 1200px;
+      aspect-ratio: 1200 / 660;
+      max-height: 85vh;
+      
+      display: block;
+    }
+
+    .controls-info {
+      margin-top: 14px;
+      text-align: center;
+      line-height: 1.8;
+      font-size: 10px;
+      background: rgba(0, 0, 0, 0.88);
+      padding: 12px 20px;
+      border-radius: 4px;
+      border: 2px solid #33ff99;
+      box-shadow: none;
+      max-width: 1200px;
+      width: 95vw;
+      transition: opacity 0.3s ease; /* Transisi halus saat hilang */
+    }
+
+    /* Class CSS untuk menyembunyikan instruksi */
+    .controls-info.hidden {
+      display: none;
+    }
+
+    .fire-text { color: #ff5533; font-weight: bold; }
+    .water-text { color: #33aaff; font-weight: bold; }
+    .lyric-quote { color: #ffe600; font-style: italic; margin-top: 4px; display: block; }
+  </style>
+</head>
+<body>
+
+  <canvas id="gameCanvas" width="1200" height="660"></canvas>
+
+  <div id="controlsInfo" class="controls-info">
+    <p>
+      <b>GERAKAN KITA:</b> [A/D] atau [PANAH KIRI/KANAN] untuk Maju / Mundur.<br>
+      <span class="fire-text">API (Merah):</span> [W] / [PANAH ATAS] | <span class="water-text">AIR (Biru):</span> [S] / [PANAH BAWAH]
+    </p>
+    <span class="lyric-quote">"Meski hidup kita singkat dan ditodong senjata"</span>
+  </div>
+
+  <audio id="bgmAudio" loop preload="auto">
+    <source src="BGM.mp3" type="audio/mpeg">
+  </audio>
+
+  <script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    const bgmAudio = document.getElementById('bgmAudio');
+    const controlsInfo = document.getElementById('controlsInfo'); // Element UI Instruksi
+
+    const sources = {
+      logo: 'LOGO.png',
+      fog: 'FOG.png',
+      api_idle: 'API IDLE.png',
+      api_kanan: 'API KANAN.png',
+      api_kiri: 'API KIRI.png',
+      api_atas: 'API ATAS.png',
+      api_bawah: 'API BAWAH.png',
+      air_idle: 'AIR IDLE.png',
+      air_kanan: 'AIR KANAN.png',
+      air_kiri: 'AIR KIRI.png',
+      air_atas: 'AIR ATAS.png',
+      air_bawah: 'AIR BAWAH.png',
+      map1: 'MAP1.png',
+      map2: 'MAP2.png',
+      map3: 'MAP3.png',
+      map4: 'MAP4.png',
+      map5: 'MAP5.png',
+      pagar1: 'PAGAR1.png',
+      pagar2: 'PAGAR2.png',
+      pagar3: 'PAGAR3.png',
+      pagar4: 'PAGAR4.png',
+      stuff1: 'STUFF1.png',
+      stuff2: 'STUFF2.png',
+      stuff3: 'STUFF3.png'
+    };
+
+    const sprites = {};
+    let loadedImages = 0;
+
+    for (let key in sources) {
+      sprites[key] = new Image();
+      sprites[key].src = sources[key];
+      sprites[key].onload = () => { loadedImages++; };
+    }
+
+    let currentLevel = 1;
+    const maxLevels = 5;
+
+    const MAX_LIVES = 5;
+    let lives = MAX_LIVES;
+    let isInvulnerable = false;
+    let invulnerableTimer = 0;
+
+    let gameStarted = false;
+    let gameOver = false;
+    let gameWon = false;
+    let levelCleared = false;
+    let animationFrameId = null;
+
+    let textBlinkTimer = 0;
+    let fogOffset = 0;
+
+    const baseCharHeight = 62;
+
+    const fire = {
+      x: 70,
+      y: 210,
+      width: 58,
+      height: baseCharHeight,
+      state: 'api_idle',
+      color: '#ff5533'
+    };
+
+    const water = {
+      x: 70,
+      y: 440,
+      width: 58,
+      height: baseCharHeight,
+      state: 'air_idle',
+      color: '#33aaff'
+    };
+
+    const finishLine = { x: 1100, width: 50 };
+
+    const levelLyrics = {
+      1: "Di jalanan panjang menuju nirwana...",
+      2: "Di harapan panjang yang tiada habisnya...",
+      3: "Meski hidup singkat dan ditodong senjata...",
+      4: "Ataukah kita belum mencoba memberi waktu pada logika?",
+      5: "Jangan seperti selama ini, hidup bagaikan air dan api..."
+    };
+
+    const levelConfigs = {
+      1: [
+        { x: 480, y: 0, width: 45, height: 340, speedY: 1.5 },
+        { x: 840, y: 320, width: 45, height: 340, speedY: -1.5 }
+      ],
+      2: [
+        { x: 360, y: 0, width: 40, height: 320, speedY: 2.0 },
+        { x: 660, y: 340, width: 40, height: 320, speedY: -2.0 },
+        { x: 900, y: 60, width: 40, height: 320, speedY: 2.2 }
+      ],
+      3: [
+        { x: 300, y: 0, width: 40, height: 360, speedY: 2.5 },
+        { x: 540, y: 300, width: 40, height: 360, speedY: -2.8 },
+        { x: 780, y: 60, width: 40, height: 300, speedY: 2.8 },
+        { x: 960, y: 240, width: 40, height: 300, speedY: -2.5 }
+      ],
+      4: [
+        { x: 260, y: 0, width: 35, height: 380, speedY: 3.2 },
+        { x: 480, y: 280, width: 35, height: 380, speedY: -3.5 },
+        { x: 700, y: 0, width: 35, height: 380, speedY: 3.8 },
+        { x: 910, y: 280, width: 35, height: 380, speedY: -4.0 }
+      ],
+      5: [
+        { x: 240, y: 0, width: 35, height: 400, speedY: 4.2 },
+        { x: 420, y: 260, width: 35, height: 400, speedY: -4.5 },
+        { x: 600, y: 0, width: 35, height: 400, speedY: 4.8 },
+        { x: 780, y: 260, width: 35, height: 400, speedY: -5.0 },
+        { x: 960, y: 0, width: 35, height: 400, speedY: 5.2 }
+      ]
+    };
+
+    let obstacles = [];
+    let randomDecorations = [];
+    let arrowBlinkTimer = 0;
+
+    function generateRandomDecorations() {
+      randomDecorations = [];
+      const stuffKeys = ['stuff1', 'stuff2', 'stuff3'];
+      const totalProps = 14 + Math.floor(Math.random() * 9);
+
+      for (let i = 0; i < totalProps; i++) {
+        let attempts = 0;
+        let placed = false;
+
+        while (attempts < 60 && !placed) {
+          attempts++;
+          
+          const isBig = Math.random() < 0.4;
+          const propWidth = isBig ? 55 : 44;
+          const propHeight = isBig ? 55 : 44;
+          
+          const randX = 140 + Math.random() * (canvas.width - 280);
+          const randY = 15 + Math.random() * (canvas.height - 75);
+
+          let overlapsObstacleColumn = false;
+          for (let obs of obstacles) {
+            if (randX + propWidth > obs.x - 35 && randX < obs.x + obs.width + 35) {
+              overlapsObstacleColumn = true;
+              break;
+            }
+          }
+
+          if (!overlapsObstacleColumn) {
+            randomDecorations.push({
+              spriteKey: stuffKeys[Math.floor(Math.random() * stuffKeys.length)],
+              x: randX,
+              y: randY,
+              width: propWidth,
+              height: propHeight
+            });
+            placed = true;
+          }
+        }
+      }
+    }
+
+    function loadLevel(lvl) {
+      const pagarKeys = ['pagar1', 'pagar2', 'pagar3', 'pagar4'];
+      obstacles = JSON.parse(JSON.stringify(levelConfigs[lvl])).map(obs => {
+        obs.spriteKey = pagarKeys[Math.floor(Math.random() * pagarKeys.length)];
+        return obs;
+      });
+
+      generateRandomDecorations();
+    }
+
+    const keys = {};
+
+    window.addEventListener('keydown', (e) => {
+      keys[e.code] = true;
+      if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) {
+        e.preventDefault();
+      }
+      if (e.code === 'Space') {
+        bgmAudio.play().catch(() => {});
+
+        if (!gameStarted) {
+          gameStarted = true;
+          resetLevel();
+        } else if (gameOver || gameWon) {
+          currentLevel = 1;
+          lives = MAX_LIVES;
+          controlsInfo.classList.remove('hidden'); // Memunculkan kembali instruksi saat reset ke Level 1
+          resetLevel();
+        }
+      }
+    });
+
+    window.addEventListener('keyup', (e) => {
+      keys[e.code] = false;
+    });
+
+    function resetLevel() {
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+      }
+      fire.x = 70;
+      fire.y = 210;
+      fire.state = 'api_idle';
+
+      water.x = 70;
+      water.y = 440;
+      water.state = 'air_idle';
+
+      isInvulnerable = false;
+      invulnerableTimer = 0;
+      gameOver = false;
+      gameWon = false;
+      levelCleared = false;
+
+      loadLevel(currentLevel);
+      loop();
+    }
+
+    function checkCollision(rect1, rect2) {
+      return (
+        rect1.x < rect2.x + rect2.width &&
+        rect1.x + rect1.width > rect2.x &&
+        rect1.y < rect2.y + rect2.height &&
+        rect1.y + rect1.height > rect2.y
+      );
+    }
+
+    function update() {
+      textBlinkTimer++;
+      fogOffset += 0.5;
+
+      if (!gameStarted || gameOver || gameWon || levelCleared) return;
+
+      arrowBlinkTimer++;
+
+      if (isInvulnerable) {
+        invulnerableTimer--;
+        if (invulnerableTimer <= 0) {
+          isInvulnerable = false;
+        }
+      }
+
+      let moveX = 0;
+      if (keys['KeyD'] || keys['ArrowRight']) moveX = 2.8;
+      if (keys['KeyA'] || keys['ArrowLeft']) moveX = -2.8;
+
+      fire.x += moveX;
+      water.x += moveX;
+
+      let fireMovingUp = keys['KeyW'] || keys['ArrowUp'];
+      fire.y += fireMovingUp ? -3.0 : 1.8;
+
+      if (moveX > 0) fire.state = 'api_kanan';
+      else if (moveX < 0) fire.state = 'api_kiri';
+      else if (fireMovingUp) fire.state = 'api_atas';
+      else fire.state = 'api_bawah';
+
+      let waterMovingDown = keys['KeyS'] || keys['ArrowDown'];
+      water.y += waterMovingDown ? 3.0 : -1.8;
+
+      if (moveX > 0) water.state = 'air_kanan';
+      else if (moveX < 0) water.state = 'air_kiri';
+      else if (waterMovingDown) water.state = 'air_bawah';
+      else water.state = 'air_atas';
+
+      fire.x = Math.max(0, Math.min(canvas.width - fire.width, fire.x));
+      water.x = Math.max(0, Math.min(canvas.width - water.width, water.x));
+
+      fire.y = Math.max(0, Math.min(canvas.height - fire.height, fire.y));
+      water.y = Math.max(0, Math.min(canvas.height - water.height, water.y));
+
+      obstacles.forEach(obs => {
+        obs.y += obs.speedY;
+        if (obs.y <= 0 || obs.y + obs.height >= canvas.height) {
+          obs.speedY *= -1;
+        }
+
+        if (!isInvulnerable && (checkCollision(fire, obs) || checkCollision(water, obs))) {
+          lives--;
+          isInvulnerable = true;
+          invulnerableTimer = 60;
+
+          if (lives <= 0) {
+            gameOver = true;
+          }
+        }
+      });
+
+      // KONDISI BERHASIL MENYELESAIKAN LEVEL
+      if (fire.x + fire.width >= finishLine.x && water.x + water.width >= finishLine.x) {
+        if (currentLevel < maxLevels) {
+          levelCleared = true;
+          controlsInfo.classList.add('hidden'); // Menyembunyikan elemen instruksi!
+
+          setTimeout(() => {
+            currentLevel++;
+            resetLevel();
+          }, 1400);
+        } else {
+          gameWon = true;
+          controlsInfo.classList.add('hidden'); // Sembunyikan instruksi saat tamat
+        }
+      }
+    }
+
+    function drawFitImage(img, targetX, targetY, targetW, targetH) {
+      if (!img || !img.complete || img.naturalWidth === 0) return false;
+      
+      const aspect = img.naturalWidth / img.naturalHeight;
+      let drawW = targetW;
+      let drawH = targetH;
+
+      if (drawW / drawH > aspect) {
+        drawW = drawH * aspect;
+      } else {
+        drawH = drawW / aspect;
+      }
+
+      const offsetX = targetX + (targetW - drawW) / 2;
+      const offsetY = targetY + (targetH - drawH) / 2;
+
+      ctx.drawImage(img, offsetX, offsetY, drawW, drawH);
+      return true;
+    }
+
+    function drawCharacter(char) {
+      if (isInvulnerable && Math.floor(invulnerableTimer / 6) % 2 === 0) {
+        return;
+      }
+
+      const img = sprites[char.state];
+      if (!drawFitImage(img, char.x, char.y, char.width, char.height)) {
+        ctx.fillStyle = char.color;
+        ctx.fillRect(char.x, char.y, char.width, char.height);
+      }
+    }
+
+    function drawBackground() {
+      const mapKey = `map${currentLevel}`;
+      const bgImg = sprites[mapKey];
+
+      if (bgImg && bgImg.complete && bgImg.naturalWidth !== 0) {
+        ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.height);
+      } else {
+        ctx.fillStyle = '#111';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      }
+    }
+
+    function drawDecorations() {
+      randomDecorations.forEach(dec => {
+        const propImg = sprites[dec.spriteKey];
+        drawFitImage(propImg, dec.x, dec.y, dec.width, dec.height);
+      });
+    }
+
+    function drawFogAssets() {
+      const fogImg = sprites.fog;
+      if (!fogImg || !fogImg.complete || fogImg.naturalWidth === 0) return;
+
+      ctx.save();
+      ctx.globalAlpha = 0.35;
+
+      const fogWidth = 500;
+      const fogHeight = (fogImg.naturalHeight / fogImg.naturalWidth) * fogWidth;
+
+      const fogPositions = [
+        { yRatio: 0.05, speedMult: 1.0 },
+        { yRatio: 0.35, speedMult: 0.7 },
+        { yRatio: 0.65, speedMult: 1.2 }
+      ];
+
+      fogPositions.forEach((pos) => {
+        const currentX = (fogOffset * pos.speedMult) % (canvas.width + fogWidth) - fogWidth;
+        const yPos = canvas.height * pos.yRatio;
+
+        ctx.drawImage(fogImg, currentX, yPos, fogWidth, fogHeight);
+        ctx.drawImage(fogImg, currentX + fogWidth + 100, yPos, fogWidth, fogHeight);
+      });
+
+      ctx.restore();
+    }
+
+    function drawObstacles() {
+      obstacles.forEach(obs => {
+        const pagarImg = sprites[obs.spriteKey];
+        if (!drawFitImage(pagarImg, obs.x, obs.y, obs.width, obs.height)) {
+          ctx.fillStyle = '#444';
+          ctx.strokeStyle = '#222';
+          ctx.lineWidth = 2;
+          ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
+          ctx.strokeRect(obs.x, obs.y, obs.width, obs.height);
+        }
+      });
+    }
+
+    function drawMetalSlugEndMarker() {
+      ctx.save();
+      if (Math.floor(arrowBlinkTimer / 15) % 2 === 0) {
+        const startX = finishLine.x - 15;
+        const startY = canvas.height / 2;
+
+        ctx.fillStyle = '#ffe600';
+        ctx.font = '13px "Press Start 2P", monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText("AYO!", startX + 20, startY - 45);
+
+        ctx.fillStyle = '#ff2200';
+        ctx.beginPath();
+        ctx.moveTo(startX, startY - 25);
+        ctx.lineTo(startX + 40, startY);
+        ctx.lineTo(startX, startY + 25);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 4;
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    function drawRetroHealthUI() {
+      ctx.save();
+
+      const startX = 25;
+      const startY = 25;
+      const boxWidth = 26;
+      const boxHeight = 18;
+      const gap = 8;
+
+      for (let i = 0; i < MAX_LIVES; i++) {
+        const x = startX + i * (boxWidth + gap);
+
+        if (i < lives) {
+          ctx.fillStyle = '#33ff33';
+          ctx.fillRect(x, startY, boxWidth, boxHeight);
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 2;
+          ctx.strokeRect(x, startY, boxWidth, boxHeight);
+        } else {
+          ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+          ctx.fillRect(x, startY, boxWidth, boxHeight);
+          ctx.strokeStyle = '#555555';
+          ctx.lineWidth = 2;
+          ctx.strokeRect(x, startY, boxWidth, boxHeight);
+        }
+      }
+
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '12px "Press Start 2P", monospace';
+      ctx.fillText(`BABAK ${currentLevel}/${maxLevels}`, startX, startY + boxHeight + 24);
+
+      ctx.restore();
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      drawBackground();
+
+      // LAYAR START
+      if (!gameStarted) {
+        ctx.fillStyle = 'rgba(2, 5, 12, 0.88)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        const logoImg = sprites.logo;
+        if (logoImg && logoImg.complete && logoImg.naturalWidth !== 0) {
+          const logoW = 900;
+          const logoH = (logoImg.naturalHeight / logoImg.naturalWidth) * logoW;
+          const logoX = (canvas.width - logoW) / 2;
+          const logoY = (canvas.height / 2) - (logoH / 2) - 35;
+
+          ctx.drawImage(logoImg, logoX, logoY, logoW, logoH);
+        } else {
+          ctx.textAlign = 'center';
+          ctx.fillStyle = '#33aaff';
+          ctx.font = '18px "Press Start 2P", monospace';
+          ctx.fillText("KISAH SEDIH KONTEMPORER", canvas.width / 2, canvas.height / 2 - 40);
+          ctx.fillStyle = '#ff5533';
+          ctx.font = '14px "Press Start 2P", monospace';
+          ctx.fillText("(AIR & API)", canvas.width / 2, canvas.height / 2 - 10);
+        }
+
+        if (Math.floor(textBlinkTimer / 20) % 2 === 0) {
+          ctx.fillStyle = '#ffffff';
+          ctx.font = '12px "Press Start 2P", monospace';
+          ctx.textAlign = 'center';
+          ctx.fillText("TEKAN [SPASI] UNTUK MULAI", canvas.width / 2, canvas.height - 85);
+        }
+
+        ctx.textAlign = 'start';
+        return;
+      }
+
+      drawDecorations();
+      drawObstacles();
+      drawCharacter(fire);
+      drawCharacter(water);
+
+      drawFogAssets();
+
+      drawMetalSlugEndMarker();
+      drawRetroHealthUI();
+
+      if (gameOver) {
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        ctx.fillStyle = '#ff4444';
+        ctx.font = 'bold 18px "Press Start 2P", monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText("SAMPAI KAPAN KITA TRUS BERNYANYI?", canvas.width / 2, canvas.height / 2 - 35);
+        
+        ctx.fillStyle = '#ffe600';
+        ctx.font = '12px "Press Start 2P", monospace';
+        ctx.fillText("Mengapa kita saling membenci? Perih...", canvas.width / 2, canvas.height / 2 + 10);
+        
+        ctx.fillStyle = '#fff';
+        ctx.font = '12px "Press Start 2P", monospace';
+        ctx.fillText("Tekan [SPASI] untuk Coba Lagi", canvas.width / 2, canvas.height / 2 + 65);
+        ctx.textAlign = 'start';
+      } else if (levelCleared) {
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        ctx.fillStyle = '#4CAF50';
+        ctx.font = '16px "Press Start 2P", monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText(`BABAK ${currentLevel} SELESAI`, canvas.width / 2, canvas.height / 2 - 25);
+        
+        ctx.fillStyle = '#ffe600';
+        ctx.font = '11px "Press Start 2P", monospace';
+        ctx.fillText(`"${levelLyrics[currentLevel]}"`, canvas.width / 2, canvas.height / 2 + 20);
+        ctx.textAlign = 'start';
+      } else if (gameWon) {
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        ctx.fillStyle = '#ffcc00';
+        ctx.font = '18px "Press Start 2P", monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText("MEMBERI WAKTU PADA LOGIKA", canvas.width / 2, canvas.height / 2 - 25);
+        
+        ctx.fillStyle = '#fff';
+        ctx.font = '11px "Press Start 2P", monospace';
+        ctx.fillText("Awalnya kita selalu memberi...", canvas.width / 2, canvas.height / 2 + 15);
+        ctx.fillText("Tekan [SPASI] untuk Bermain Kembali", canvas.width / 2, canvas.height / 2 + 60);
+        ctx.textAlign = 'start';
+      }
+    }
+
+    function loop() {
+      update();
+      draw();
+      if (!gameOver && !gameWon && !levelCleared) {
+        animationFrameId = requestAnimationFrame(loop);
+      }
+    }
+
+    loop();
+  </script>
+</body>
+</html>
