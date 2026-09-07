@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dongker - Takbir Terdengar Kejam</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+        * {
+            box-sizing: border-box;
+            image-rendering: pixelated;
+        }
+
+        body {
+            background: #050608 url('LANGIT.png') no-repeat center center fixed;
+            background-size: cover;
+            color: #d1d5db;
+            font-family: 'Press Start 2P', monospace;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .pc98-console {
+            background: rgba(28, 29, 36, 0.95);
+            border: 4px solid #3a3d4a;
+            box-shadow: inset 2px 2px 0px #4e5263, 0 0 35px rgba(0, 188, 255, 0.3);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            width: 1120px;
+            border-radius: 4px;
+            backdrop-filter: blur(5px);
+        }
+
+        .top-section {
+            display: flex;
+            gap: 16px;
+            height: 520px;
+        }
+
+        .canvas-frame {
+            background: #000;
+            border: 3px solid #00bcff;
+            box-shadow: inset 0 0 12px rgba(0, 188, 255, 0.3);
+            flex: 1;
+            position: relative;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        .side-panel {
+            width: 260px;
+            background: #121318;
+            border: 3px solid #3a3d4a;
+            box-shadow: inset 0 0 8px rgba(0,0,0,0.8);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 16px;
+            box-sizing: border-box;
+        }
+
+        .torch-frame {
+            width: 100%;
+            height: 280px;
+            background: #050a14;
+            border: 2px solid #00bcff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            box-shadow: 0 0 10px rgba(0, 188, 255, 0.2);
+        }
+
+        .torch-frame img {
+            max-height: 250px;
+            width: auto;
+            object-fit: contain;
+        }
+
+        .status-text {
+            width: 100%;
+            margin-top: 20px;
+            font-size: 11px;
+            line-height: 2.0;
+            color: #9ca3af;
+        }
+
+        .status-val {
+            color: #00bcff;
+            margin-bottom: 12px;
+            font-size: 11px;
+        }
+
+        .dialogue-box {
+            background: #000000;
+            border: 3px solid #6b7280;
+            box-shadow: inset 0 0 5px rgba(255, 255, 255, 0.2);
+            padding: 16px 20px;
+            min-height: 70px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            position: relative;
+        }
+
+        .dialogue-text {
+            color: #ffffff;
+            font-size: 10px;
+            line-height: 1.7;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Elemen Audio untuk BGM -->
+    <audio id="bgmAudio" loop preload="auto">
+        <source src="BGM.mp3" type="audio/mpeg">
+        <source src="BGM.ogg" type="audio/ogg">
+    </audio>
+
+    <div class="pc98-console">
+        <div class="top-section">
+            <div class="canvas-frame">
+                <canvas id="rhythmCanvas" width="800" height="520"></canvas>
+            </div>
+
+            <div class="side-panel">
+                <div class="torch-frame">
+                    <img id="torchDisplay" src="API 1.png" alt="Obor Nyawa">
+                </div>
+                <div class="status-text">
+                    <div class="status-val">BATIN : <span id="healthNum">100</span>%</div>
+                    <div class="status-val">TARGET KETENANGAN  : <span id="scoreNum">0</span>/100</div>
+                    <div style="color: #6b7280; margin-top: 10px; font-size: 10px;">STATUS:</div>
+                    <div id="statusLabel" style="color: #00bcff; font-size: 11px; margin-top: 6px;">BERGEGAS</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="dialogue-box">
+            <div class="dialogue-text" id="dialogueText">
+                Tekan [SPASI] untuk memulai permainan. Waspadai laju nafas yang mendadak berubah!
+            </div>
+        </div>
+    </div>
+
+<script>
+const canvas = document.getElementById('rhythmCanvas');
+const ctx = canvas.getContext('2d');
+
+const centerX = canvas.width / 2;
+const centerY = canvas.height / 2;
+
+let rings = [];
+let score = 0;
+let regret = 0;
+let gameStarted = false;
+let gameOver = false;
+let gameWin = false;
+
+// Element UI & Audio
+const torchDisplay = document.getElementById('torchDisplay');
+const healthNum = document.getElementById('healthNum');
+const scoreNum = document.getElementById('scoreNum');
+const statusLabel = document.getElementById('statusLabel');
+const dialogueText = document.getElementById('dialogueText');
+const bgmAudio = document.getElementById('bgmAudio');
+
+const bgImg = new Image();
+bgImg.src = 'LANGIT.png';
+
+const ringImg = new Image();
+ringImg.src = 'LINGKARAN NAFAS.png';
+
+const logoImg = new Image();
+logoImg.src = 'LOGO.png';
+
+const fwSources = ['KEMBANG API 1.png', 'KEMBANG API 2.png', 'KEMBANG API 3.png'];
+const fwImages = fwSources.map(src => {
+    const img = new Image();
+    img.src = src;
+    return img;
+});
+
+const torchSources = [
+    'API 1.png',
+    'API 2.png',
+    'API 3.png',
+    'API 4.png',
+    'API 5.png',
+    'API 6.png',
+    'API 7.png'
+];
+
+let activeFireworks = [];
+
+function spawnFirework() {
+    let maxLimit = gameWin ? 20 : 6;
+
+    if (activeFireworks.length < maxLimit) {
+        activeFireworks.push({
+            x: Math.random() * (canvas.width - 200) + 100,
+            y: Math.random() * (canvas.height - 200) + 50,
+            size: Math.random() * 90 + 130,
+            imgIndex: Math.floor(Math.random() * fwImages.length),
+            alpha: 1,
+            fadeSpeed: gameWin ? Math.random() * 0.02 + 0.01 : Math.random() * 0.012 + 0.006
+        });
+    }
+}
+
+function fireworkLoop() {
+    spawnFirework();
+    let delay = gameWin ? 150 : 800;
+    setTimeout(fireworkLoop, delay);
+}
+fireworkLoop();
+
+function playBGM() {
+    if (bgmAudio.paused) {
+        bgmAudio.play().catch(err => {
+            console.log("Autoplay dicegah oleh browser, audio akan diputar saat ada interaksi pengguna.");
+        });
+    }
+}
+
+function startGame() {
+    gameStarted = true;
+    playBGM();
+    resetGame();
+}
+
+function resetGame() {
+    rings = [];
+    score = 0;
+    regret = 0;
+    gameOver = false;
+    gameWin = false;
+    dialogueText.innerText = "Tekan [SPASI] saat lingkaran nafas menyentuh titik target. Jaga agar api obor tidak padam!";
+}
+
+function scheduleNextRing() {
+    if (gameStarted && !gameOver && !gameWin) {
+        let isTrick = Math.random() < 0.35;
+        let speedBase = 1.8 + Math.random() * 1.8;
+
+        rings.push({
+            radius: 280,
+            speed: speedBase,
+            isTrick: isTrick,
+            hasShrunk: false
+        });
+    }
+
+    let nextDelay = Math.random() * 1200 + 1000;
+    setTimeout(scheduleNextRing, nextDelay);
+}
+scheduleNextRing();
+
+window.addEventListener('keydown', (e) => {
+    if (e.code === 'Space') {
+        if (!gameStarted) {
+            startGame();
+        } else if (!gameOver && !gameWin) {
+            if (rings.length > 0) {
+                let targetRing = rings[0];
+                let distance = Math.abs(targetRing.radius - 40);
+
+                if (distance < 22) {
+                    score += 10;
+                    regret = Math.max(0, regret - 10);
+                    rings.shift();
+                } else {
+                    regret = Math.min(100, regret + 14);
+                }
+            }
+        }
+    }
+    if (e.code === 'KeyR' && (gameOver || gameWin)) {
+        resetGame();
+    }
+});
+
+function update() {
+    for (let i = activeFireworks.length - 1; i >= 0; i--) {
+        activeFireworks[i].alpha -= activeFireworks[i].fadeSpeed;
+        if (activeFireworks[i].alpha <= 0) {
+            activeFireworks.splice(i, 1);
+        }
+    }
+
+    if (!gameStarted || gameOver || gameWin) return;
+
+    for (let i = rings.length - 1; i >= 0; i--) {
+        if (rings[i].isTrick && !rings[i].hasShrunk && rings[i].radius < 150) {
+            rings[i].radius -= 45;
+            rings[i].speed *= 1.4;
+            rings[i].hasShrunk = true;
+        }
+
+        rings[i].radius -= rings[i].speed;
+
+        if (rings[i].radius <= 10) {
+            regret = Math.min(100, regret + 16);
+            rings.splice(i, 1);
+        }
+    }
+
+    if (regret >= 100) {
+        gameOver = true;
+        dialogueText.innerHTML = "Takbir terdengar kejam di penghujung jalan. Kamu amat menyesal karena tak bisa pulang. Tekan [R] untuk coba lagi.";
+    }
+    
+    if (score >= 100 && regret < 80) {
+        gameWin = true;
+        rings = [];
+        dialogueText.innerHTML = "Pintu yang tertutup belum tentu ia terkunci. Kamu berhasil melawan diam! Tekan [R] untuk main lagi.";
+    }
+
+    updateUI();
+}
+
+function getTorchIndex() {
+    let healthPercent = (100 - regret) / 100;
+    if (healthPercent >= 0.85) return 0;
+    if (healthPercent >= 0.70) return 1;
+    if (healthPercent >= 0.55) return 2;
+    if (healthPercent >= 0.40) return 3;
+    if (healthPercent >= 0.25) return 4;
+    if (healthPercent > 0)    return 5;
+    return 6;
+}
+
+function updateUI() {
+    let currentHealth = Math.max(0, 100 - regret);
+    healthNum.innerText = currentHealth;
+    scoreNum.innerText = score;
+
+    let idx = getTorchIndex();
+    torchDisplay.src = torchSources[idx];
+
+    if (!gameStarted) {
+        statusLabel.innerText = "BERGEGAS";
+        statusLabel.style.color = "#00bcff";
+    } else if (idx === 0 || idx === 1) {
+        statusLabel.innerText = "BERDAMAI";
+        statusLabel.style.color = "#00bcff";
+    } else if (idx <= 4) {
+        statusLabel.innerText = "BINGUNG";
+        statusLabel.style.color = "#ff8c00";
+    } else if (idx === 5) {
+        statusLabel.innerText = "MENYESAL";
+        statusLabel.style.color = "#ff3b00";
+    } else {
+        statusLabel.innerText = "TERKUNCI";
+        statusLabel.style.color = "#ff0000";
+    }
+}
+
+function drawBackground() {
+    if (bgImg.complete && bgImg.naturalWidth !== 0) {
+        ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.height);
+    } else {
+        ctx.fillStyle = '#050a14';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+
+    activeFireworks.forEach(fw => {
+        let fwImg = fwImages[fw.imgIndex];
+        if (fwImg.complete && fwImg.naturalWidth !== 0) {
+            ctx.save();
+            ctx.globalAlpha = Math.max(0, fw.alpha);
+            ctx.drawImage(fwImg, fw.x - fw.size / 2, fw.y - fw.size / 2, fw.size, fw.size);
+            ctx.restore();
+        }
+    });
+}
+
+function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    drawBackground();
+
+    if (!gameStarted) {
+        ctx.fillStyle = 'rgba(2, 5, 12, 0.75)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Render Logo di Start Screen
+        if (logoImg.complete && logoImg.naturalWidth !== 0) {
+            const logoWidth = 480;
+            const logoScale = logoWidth / logoImg.naturalWidth;
+            const logoHeight = logoImg.naturalHeight * logoScale;
+            ctx.drawImage(logoImg, centerX - logoWidth / 2, centerY - 150, logoWidth, logoHeight);
+        } else {
+            ctx.textAlign = 'center';
+            ctx.fillStyle = '#00bcff';
+            ctx.font = '16px "Press Start 2P"';
+            ctx.fillText('TAKBIR TERDENGAR KEJAM', centerX, centerY - 40);
+        }
+
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '10px "Press Start 2P"';
+        ctx.fillText('Tekan [SPASI] Untuk Mulai', centerX, centerY + 60);
+        ctx.textAlign = 'left';
+        return;
+    }
+
+    if (!gameWin) {
+        let blinkAlpha = 0.5 + Math.sin(Date.now() * 0.008) * 0.5;
+        let targetRadius = 40;
+
+        if (ringImg.complete && ringImg.naturalWidth !== 0) {
+            ctx.save();
+            ctx.globalAlpha = blinkAlpha;
+            ctx.drawImage(ringImg, centerX - targetRadius, centerY - targetRadius, targetRadius * 2, targetRadius * 2);
+            ctx.restore();
+        }
+
+        ctx.fillStyle = '#e0f7fc';
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, 6, 0, Math.PI * 2);
+        ctx.fill();
+
+        rings.forEach(ring => {
+            if (ringImg.complete && ringImg.naturalWidth !== 0) {
+                let diameter = ring.radius * 2;
+                ctx.drawImage(ringImg, centerX - ring.radius, centerY - ring.radius, diameter, diameter);
+            } else {
+                ctx.strokeStyle = '#00d0ff';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, ring.radius, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+        });
+    }
+}
+
+function gameLoop() {
+    update();
+    draw();
+    requestAnimationFrame(gameLoop);
+}
+
+gameLoop();
+</script>
+</body>
+</html>
