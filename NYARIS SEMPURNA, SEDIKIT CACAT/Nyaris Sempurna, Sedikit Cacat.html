@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nyaris Sempurna, Sedikit Cacat - Ice Blue Edition</title>
+    <!-- Font Pixel Art -->
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-image: url('BG.png');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+            color: #111115;
+            font-family: 'Press Start 2P', monospace;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        /* Container Utama */
+        #game-container {
+            position: relative;
+            width: 1060px;
+            max-width: 95vw;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #111823; 
+            border: 6px solid #00d0ff; 
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: inset -4px -4px 0px #006880, inset 4px 4px 0px #80e8ff, 0 10px 25px rgba(0,208,255,0.25);
+        }
+
+        /* Layout Utama */
+        #main-layout {
+            display: flex;
+            gap: 20px;
+            width: 100%;
+            align-items: stretch;
+        }
+
+        /* Box Karakter */
+        #character-card {
+            width: 320px;
+            display: flex;
+            flex-direction: column;
+            background-color: #182333;
+            border: 4px solid #33a6cc; 
+            border-radius: 16px;
+            padding: 12px;
+            box-shadow: inset -3px -3px 0px #0d4d66, inset 3px 3px 0px #66ccff;
+        }
+
+        /* Background Karakter Solid Biru Terang */
+        #portrait-frame {
+            width: 100%;
+            height: 100%;
+            min-height: 380px;
+            background-color: #0077ff; 
+            border: 3px solid #00d0ff;
+            border-radius: 10px;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        #character-avatar {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            object-position: top center;
+            image-rendering: pixelated;
+        }
+
+        /* Area Game & UI Skor */
+        #game-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        #ui-panel {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            font-size: 0.65rem;
+        }
+
+        .stat-box {
+            background: #5cdbff; 
+            color: #0b0e14;
+            border: 3px solid #111115;
+            border-radius: 8px;
+            padding: 8px 12px;
+            box-shadow: inset -2px -2px 0px #1fa3cc;
+        }
+
+        /* Kotak khusus feedback READY */
+        #feedback-display {
+            background-color: #ffffff;
+            box-shadow: inset -2px -2px 0px #cccccc;
+        }
+
+        /* Canvas Arena Game */
+        canvas {
+            background-color: #1a2a3a; 
+            border: 4px solid #00d0ff;
+            border-radius: 12px;
+            image-rendering: pixelated;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.4);
+        }
+
+        /* Panel Bawah */
+        #bottom-panel {
+            width: 100%;
+            margin-top: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #182333;
+            border: 4px solid #33a6cc;
+            border-radius: 12px;
+            padding: 12px 20px;
+            box-shadow: inset -2px -2px 0px #0d4d66;
+        }
+
+        .instructions {
+            color: #5cdbff;
+            font-size: 0.65rem;
+            line-height: 1.4;
+            text-shadow: 1px 1px #0b0e14;
+        }
+
+        /* Animasi Kedip Retro */
+        @keyframes retroBlink {
+            0%, 49% {
+                background: #00d0ff;
+                color: #0b0e14;
+                border-color: #ffffff;
+                box-shadow: 3px 3px 0px #ffffff;
+            }
+            50%, 100% {
+                background: #5cdbff;
+                color: #0b0e14;
+                border-color: #006880;
+                box-shadow: 3px 3px 0px #006880;
+            }
+        }
+
+        #start-btn {
+            padding: 10px 20px;
+            font-family: 'Press Start 2P', monospace;
+            font-size: 0.75rem;
+            border: 3px solid #111115;
+            border-radius: 8px;
+            cursor: pointer;
+            animation: retroBlink 0.8s infinite;
+            transition: transform 0.1s ease;
+        }
+
+        #start-btn:hover {
+            transform: scale(1.05);
+        }
+
+        #start-btn:active {
+            transform: translate(2px, 2px);
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <div id="main-layout">
+        <div id="character-card">
+            <div id="portrait-frame">
+                <img id="character-avatar" src="MISS.png" alt="Character Expression">
+            </div>
+        </div>
+
+        <div id="game-section">
+            <div id="ui-panel">
+                <div class="stat-box">SKOR:<span id="score-display">0</span></div>
+                <div class="stat-box">COMBO:<span id="streak-display">0</span></div>
+                <div class="stat-box" id="feedback-display" style="color: #0b0e14;">READY</div>
+            </div>
+            
+            <canvas id="gameCanvas" width="680" height="380"></canvas>
+        </div>
+    </div>
+
+    <div id="bottom-panel">
+        <div class="instructions">
+            TEKAN SPASI / KLIK UNTUK HIT NADA
+        </div>
+        <button id="start-btn" onclick="startGame()">[ PRESS START ]</button>
+    </div>
+</div>
+
+<script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    const scoreDisplay = document.getElementById('score-display');
+    const streakDisplay = document.getElementById('streak-display');
+    const feedbackDisplay = document.getElementById('feedback-display');
+    const startBtn = document.getElementById('start-btn');
+    const charAvatar = document.getElementById('character-avatar');
+
+    const IMG_HIT = "HIT.png";
+    const IMG_MISS = "MISS.png";
+
+    const imgLogo = new Image();
+    imgLogo.src = "LOGO.png";
+    imgLogo.onload = () => {
+        if (!isPlaying) drawTitleScreen();
+    };
+
+    const imgNadaB1 = new Image();
+    imgNadaB1.src = "NADA B1.png";
+
+    const imgNadaB2 = new Image();
+    imgNadaB2.src = "NADA B2.png";
+
+    const imgNadaB3 = new Image();
+    imgNadaB3.src = "NADA B3.png";
+
+    let audioCtx, analyser, sourceNode, audioBuffer;
+    let dataArray;
+
+    let score = 0;
+    let streak = 0;
+    let isPlaying = false;
+    let speed = 7.5; 
+
+    // Ukuran box disesuaikan dengan ukuran gambar nada (100px)
+    const player = {
+        x: 140,
+        y: 190,
+        size: 100,
+        hitEffect: 0
+    };
+
+    const hitZone = {
+        x: player.x - (player.size / 2),
+        y: player.y - (player.size / 2),
+        width: player.size,
+        height: player.size
+    };
+
+    // State Overlay Combo Text
+    let comboOverlay = {
+        text: "",
+        timer: 0,
+        color: "#ffcc00",
+        scale: 1
+    };
+
+    let obstacles = [];
+    let particles = [];
+    let lastSpawnTime = 0;
+
+    class PixelParticle {
+        constructor(x, y, color) {
+            this.x = x;
+            this.y = y;
+            this.size = Math.floor(Math.random() * 5) + 3;
+            this.vx = (Math.random() - 0.5) * 7;
+            this.vy = (Math.random() - 0.5) * 7;
+            this.color = color;
+            this.life = 1.0;
+        }
+
+        update() {
+            this.x += this.vx;
+            this.y += this.vy;
+            this.life -= 0.05;
+        }
+
+        draw() {
+            ctx.save();
+            ctx.globalAlpha = this.life;
+            ctx.fillStyle = this.color;
+            ctx.fillRect(Math.floor(this.x), Math.floor(this.y), this.size, this.size);
+            ctx.restore();
+        }
+    }
+
+    class Obstacle {
+        constructor(x, type = 'bass') {
+            this.x = x;
+            this.size = 100;
+            this.y = player.y - (this.size / 2);
+            this.type = type; 
+            this.hit = false;
+            this.missed = false; 
+            this.alpha = 1.0;    
+
+            if (this.type === 'hihat') {
+                this.img = imgNadaB3;
+            } else if (this.type === 'special') {
+                this.img = imgNadaB2;
+            } else {
+                this.img = imgNadaB1;
+            }
+        }
+
+        update() {
+            this.x -= speed;
+
+            if (this.missed) {
+                this.alpha -= 0.04;
+                if (this.alpha < 0) this.alpha = 0;
+            }
+        }
+
+        draw() {
+            ctx.save();
+            ctx.globalAlpha = this.alpha;
+            
+            let drawX = Math.floor(this.x);
+            let drawY = Math.floor(this.y);
+
+            if (this.missed) {
+                ctx.filter = "brightness(0.3) grayscale(1)";
+            } else {
+                ctx.shadowColor = "#FFFFFF";
+                ctx.shadowBlur = 10;
+            }
+
+            if (this.img.complete) {
+                ctx.drawImage(this.img, drawX, drawY, this.size, this.size);
+            } else {
+                ctx.fillStyle = this.type === 'hihat' ? '#00d0ff' : '#5cdbff';
+                ctx.fillRect(drawX, drawY, this.size, this.size);
+            }
+
+            ctx.restore();
+        }
+    }
+
+    function drawTitleScreen() {
+        ctx.fillStyle = '#1a2a3a'; 
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        if (imgLogo.complete && imgLogo.naturalWidth !== 0) {
+            let logoWidth = 480;
+            let logoHeight = (imgLogo.height / imgLogo.width) * logoWidth;
+            let logoX = (canvas.width - logoWidth) / 2;
+            let logoY = (canvas.height - logoHeight) / 2;
+
+            ctx.drawImage(imgLogo, logoX, logoY, logoWidth, logoHeight);
+        }
+    }
+
+    async function initAudio() {
+        if (!audioCtx) {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            analyser = audioCtx.createAnalyser();
+            analyser.fftSize = 256;
+            dataArray = new Uint8Array(analyser.frequencyBinCount);
+        }
+
+        if (audioCtx.state === 'suspended') {
+            await audioCtx.resume();
+        }
+
+        if (!audioBuffer) {
+            startBtn.textContent = "LOADING...";
+            try {
+                const response = await fetch('Nyaris Sempurna, Sedikit Cacat.mp3');
+                const arrayBuffer = await response.arrayBuffer();
+                audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+            } catch (err) {
+                alert("Gagal memuat lagu! Pastikan kamu menjalankan file ini menggunakan Live Server.");
+            }
+        }
+    }
+
+    function createExplosion(x, y, color) {
+        for (let i = 0; i < 12; i++) {
+            particles.push(new PixelParticle(x, y, color));
+        }
+    }
+
+    function setCharacterExpression(type) {
+        if (type === 'hit') {
+            charAvatar.src = IMG_HIT;
+        } else {
+            charAvatar.src = IMG_MISS;
+        }
+    }
+
+    function triggerComboText(currentStreak) {
+        if (currentStreak >= 5) {
+            comboOverlay.timer = 40; // durasi tampil (frame)
+            comboOverlay.scale = 1.4; // animasi efek memental
+
+            if (currentStreak >= 30) {
+                comboOverlay.text = `${currentStreak} FEVER!!`;
+                comboOverlay.color = "#ff0055";
+            } else if (currentStreak >= 20) {
+                comboOverlay.text = `${currentStreak} SUPER!!`;
+                comboOverlay.color = "#ff3300";
+            } else if (currentStreak >= 10) {
+                comboOverlay.text = `${currentStreak} GREAT!!`;
+                comboOverlay.color = "#ffcc00";
+            } else {
+                comboOverlay.text = `${currentStreak} COMBO!`;
+                comboOverlay.color = "#00d0ff";
+            }
+        }
+    }
+
+    function detectBeat() {
+        if (!analyser || !isPlaying) return;
+
+        analyser.getByteFrequencyData(dataArray);
+
+        let bassEnergy = 0;
+        for (let i = 0; i < 4; i++) bassEnergy += dataArray[i];
+        bassEnergy /= 4;
+
+        let hihatEnergy = 0;
+        for (let i = 12; i < 30; i++) hihatEnergy += dataArray[i];
+        hihatEnergy /= 18;
+
+        let now = Date.now();
+        let dynamicCooldown = Math.floor(Math.random() * 120) + 280;
+
+        if (now - lastSpawnTime > dynamicCooldown) {
+            if (bassEnergy > 195 && Math.random() > 0.35) { 
+                let type = Math.random() > 0.7 ? 'special' : 'bass';
+                obstacles.push(new Obstacle(canvas.width + 40, type));
+                lastSpawnTime = now;
+            } else if (hihatEnergy > 145 && Math.random() > 0.35) { 
+                obstacles.push(new Obstacle(canvas.width + 40, 'hihat'));
+                lastSpawnTime = now;
+            }
+        }
+    }
+
+    function triggerAction() {
+        if (!isPlaying) return;
+
+        player.hitEffect = 8;
+
+        let target = obstacles.find(obs => !obs.hit && !obs.missed && (obs.x + obs.size > hitZone.x - 40));
+
+        if (target) {
+            let distance = Math.abs((target.x + target.size/2) - player.x);
+
+            if (distance < 25) {
+                showFeedback("PERFECT!", "#32CD32");
+                score += 100 + (streak * 10);
+                streak++;
+                target.hit = true;
+                setCharacterExpression('hit');
+                triggerComboText(streak);
+                createExplosion(target.x + target.size/2, target.y + target.size/2, target.type === 'hihat' ? '#00d0ff' : '#5cdbff');
+            } 
+            else if (distance < 65) {
+                showFeedback("HIT!", "#008000");
+                score += 50;
+                streak++;
+                target.hit = true;
+                setCharacterExpression('hit');
+                triggerComboText(streak);
+                createExplosion(target.x + target.size/2, target.y + target.size/2, '#5cdbff');
+            } 
+            else {
+                showFeedback("MISS!", "#ff3366");
+                streak = 0;
+                comboOverlay.text = ""; // Reset overlay combo kalau luput
+                setCharacterExpression('miss');
+            }
+        } else {
+            showFeedback("EARLY!", "#ff3366");
+            streak = 0;
+            comboOverlay.text = ""; // Reset overlay combo kalau salah pencet
+            setCharacterExpression('miss');
+        }
+
+        scoreDisplay.textContent = score;
+        streakDisplay.textContent = streak;
+    }
+
+    function showFeedback(text, color) {
+        feedbackDisplay.textContent = text;
+        feedbackDisplay.style.color = color;
+    }
+
+    async function startGame() {
+        await initAudio();
+
+        if (!audioBuffer) return;
+
+        if (sourceNode) {
+            try { sourceNode.stop(); } catch(e){}
+        }
+
+        startBtn.textContent = "[ RESTART ]";
+        score = 0;
+        streak = 0;
+        comboOverlay.text = "";
+        obstacles = [];
+        particles = [];
+        isPlaying = true;
+        scoreDisplay.textContent = score;
+        streakDisplay.textContent = streak;
+        showFeedback("GO!", "#00d0ff");
+        setCharacterExpression('hit');
+
+        sourceNode = audioCtx.createBufferSource();
+        sourceNode.buffer = audioBuffer;
+        sourceNode.connect(analyser);
+        analyser.connect(audioCtx.destination);
+        sourceNode.start(0);
+        
+        sourceNode.onended = () => {
+            if (isPlaying) {
+                showFeedback("CLEAR!", "#5cdbff");
+                isPlaying = false;
+                startBtn.textContent = '[ PRESS START ]';
+                drawTitleScreen();
+            }
+        };
+
+        animate();
+    }
+
+    function update() {
+        detectBeat();
+
+        for (let i = obstacles.length - 1; i >= 0; i--) {
+            let obs = obstacles[i];
+            obs.update();
+
+            if (!obs.hit && !obs.missed && obs.x < player.x - 50) {
+                showFeedback("MISS!", "#ff3366");
+                streak = 0;
+                comboOverlay.text = ""; // Reset overlay combo kalau nada terlewat
+                streakDisplay.textContent = streak;
+                obs.missed = true; 
+                setCharacterExpression('miss');
+            }
+
+            if (obs.hit || obs.alpha <= 0 || obs.x < -100) {
+                obstacles.splice(i, 1);
+            }
+        }
+
+        for (let i = particles.length - 1; i >= 0; i--) {
+            particles[i].update();
+            if (particles[i].life <= 0) {
+                particles.splice(i, 1);
+            }
+        }
+
+        if (player.hitEffect > 0) player.hitEffect--;
+
+        // Update animasi combo overlay
+        if (comboOverlay.timer > 0) {
+            comboOverlay.timer--;
+            if (comboOverlay.scale > 1) {
+                comboOverlay.scale -= 0.02;
+            }
+        }
+    }
+
+    function draw() {
+        ctx.fillStyle = '#1a2a3a';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        ctx.strokeStyle = '#2d455e';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.setLineDash([12, 12]);
+        ctx.moveTo(0, player.y);
+        ctx.lineTo(canvas.width, player.y);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        ctx.fillStyle = 'rgba(0, 208, 255, 0.2)';
+        ctx.fillRect(hitZone.x, hitZone.y, hitZone.width, hitZone.height);
+        ctx.strokeStyle = '#00d0ff';
+        ctx.lineWidth = 3;
+        ctx.strokeRect(hitZone.x, hitZone.y, hitZone.width, hitZone.height);
+
+        let pSize = player.size + (player.hitEffect * 2);
+        let px = Math.floor(player.x - pSize / 2);
+        let py = Math.floor(player.y - pSize / 2);
+        
+        ctx.strokeStyle = player.hitEffect > 0 ? '#ffffff' : '#5cdbff';
+        ctx.lineWidth = 3;
+        ctx.strokeRect(px, py, pSize, pSize);
+
+        obstacles.forEach(obs => obs.draw());
+        particles.forEach(p => p.draw());
+
+        // Draw Combo Text Overlay
+        if (comboOverlay.timer > 0 && comboOverlay.text !== "") {
+            ctx.save();
+            ctx.font = `bold ${Math.floor(22 * comboOverlay.scale)}px 'Press Start 2P', monospace`;
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+
+            // Bayangan teks piksel
+            ctx.fillStyle = "#000000";
+            ctx.fillText(comboOverlay.text, canvas.width / 2 + 3, canvas.height / 3 + 3);
+
+            // Warna utama teks
+            ctx.fillStyle = comboOverlay.color;
+            ctx.fillText(comboOverlay.text, canvas.width / 2, canvas.height / 3);
+            ctx.restore();
+        }
+    }
+
+    function animate() {
+        if (isPlaying) {
+            update();
+            draw();
+            requestAnimationFrame(animate);
+        } else {
+            drawTitleScreen();
+        }
+    }
+
+    drawTitleScreen();
+
+    window.addEventListener('keydown', (e) => {
+        if (e.code === 'Space') {
+            e.preventDefault();
+            triggerAction();
+        }
+    });
+
+    canvas.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        triggerAction();
+    });
+</script>
+
+</body>
+</html>
