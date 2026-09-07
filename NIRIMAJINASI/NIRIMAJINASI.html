@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NIRIMAJINASI — World of Horror Aesthetic</title>
+    <!-- Font Pixel Art Retro -->
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --paper-cream: #d8cbb5;
+            --paper-dark: #1e1b18;
+            --ink-black: #11100f;
+            --ink-accent: #8b0000;
+            --border-thick: 3px solid #11100f;
+            --border-thin: 1px solid #11100f;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            image-rendering: pixelated;
+        }
+
+        /* BACKGROUND BODY ASLI DENGAN GAMBAR BG.jpg */
+        body {
+            background-image: url('BG.jpg');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+            color: var(--ink-black);
+            font-family: 'VT323', monospace;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 10px;
+        }
+
+        /* Screen Frame 1120px x 720px */
+        .screen {
+            width: 1120px;
+            height: 720px;
+            background-color: var(--paper-cream);
+            border: 6px solid #2b2823;
+            box-shadow: 0 0 25px rgba(0,0,0,0.95), inset 0 0 5px rgba(0,0,0,0.5);
+            display: grid;
+            grid-template-rows: 32px 1fr 150px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Scanline overlay */
+        .screen::after {
+            content: " ";
+            display: block;
+            position: absolute;
+            top: 0; left: 0; bottom: 0; right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.15) 50%);
+            background-size: 100% 4px;
+            z-index: 100;
+            pointer-events: none;
+        }
+
+        /* --- SPLASH SCREEN / TITLE SCREEN --- */
+        .splash-overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--paper-cream);
+            z-index: 200;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .splash-logo {
+            max-width: 70%;
+            max-height: 220px;
+            object-fit: contain;
+            filter: contrast(1.5);
+            margin-bottom: 20px;
+        }
+
+        .splash-instructions {
+            font-size: 1.3rem;
+            margin-bottom: 20px;
+            max-width: 680px;
+            line-height: 1.3;
+        }
+
+        /* INPUT NAMA INVESTIGATOR */
+        .input-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+
+        .input-label {
+            font-family: 'Press Start 2P', monospace;
+            font-size: 0.65rem;
+            color: var(--ink-black);
+        }
+
+        .pixel-input {
+            font-family: 'VT323', monospace;
+            font-size: 1.4rem;
+            padding: 6px 12px;
+            background: #c8ba9f;
+            border: var(--border-thick);
+            color: var(--ink-black);
+            text-align: center;
+            outline: none;
+            text-transform: uppercase;
+            width: 260px;
+        }
+
+        .pixel-input:focus {
+            background: var(--paper-cream);
+            border-color: var(--ink-accent);
+        }
+
+        /* --- TOP BAR --- */
+        .top-bar {
+            background: var(--paper-cream);
+            border-bottom: var(--border-thick);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 12px;
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+
+        .top-bar .title {
+            font-family: 'Press Start 2P', monospace;
+            font-size: 0.75rem;
+            letter-spacing: 1px;
+        }
+
+        .top-stats {
+            display: flex;
+            gap: 15px;
+        }
+
+        .stat-box {
+            border: var(--border-thin);
+            padding: 2px 8px;
+            background: #c8ba9f;
+        }
+
+        /* --- MAIN CONTENT (LAYOUT 2 KOLOM) --- */
+        .main-grid {
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            height: 100%;
+            border-bottom: var(--border-thick);
+        }
+
+        /* LEFT PANEL */
+        .left-panel {
+            border-right: var(--border-thick);
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            background: var(--paper-cream);
+        }
+
+        .panel-header {
+            font-family: 'Press Start 2P', monospace;
+            font-size: 0.65rem;
+            border-bottom: var(--border-thin);
+            padding-bottom: 4px;
+            margin-bottom: 2px;
+            word-break: break-word;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 1.3rem;
+            border-bottom: 1px dashed var(--ink-black);
+        }
+
+        .doom-meter-container {
+            margin-top: auto;
+            border: var(--border-thick);
+            padding: 6px;
+            background: #c0b196;
+        }
+
+        .doom-title {
+            font-family: 'Press Start 2P', monospace;
+            font-size: 0.6rem;
+            color: var(--ink-accent);
+            margin-bottom: 4px;
+        }
+
+        .doom-bar {
+            height: 16px;
+            border: var(--border-thin);
+            background: var(--paper-cream);
+            position: relative;
+        }
+
+        .doom-fill {
+            height: 100%;
+            width: 0%;
+            background: var(--ink-black);
+            transition: width 0.3s;
+        }
+
+        /* CENTER PANEL (ARENA) */
+        .center-panel {
+            position: relative;
+            background: #11100f;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            overflow: hidden;
+        }
+
+        .arena-scene {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-image: 
+                radial-gradient(circle, #2b2823 1px, transparent 1px),
+                linear-gradient(180deg, rgba(216,203,181,0.1) 0%, rgba(0,0,0,0.8) 100%);
+            background-size: 4px 4px, 100% 100%;
+        }
+
+        .fire-container {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            height: 80px;
+            z-index: 10;
+            pointer-events: none;
+            background-size: contain;
+            background-position: bottom center;
+            background-repeat: repeat-x;
+        }
+
+        .falling-book {
+            position: absolute;
+            width: 58px;
+            height: 58px;
+            cursor: pointer;
+            z-index: 20;
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            filter: sepia(0.8) contrast(1.5) brightness(0.9);
+            border: 1px solid transparent;
+        }
+
+        .falling-book:hover {
+            filter: sepia(0) contrast(2) drop-shadow(0 0 4px var(--paper-cream));
+            border: 1px dashed var(--paper-cream);
+        }
+
+        /* BOTTOM PANEL */
+        .bottom-panel {
+            display: grid;
+            grid-template-columns: 1fr 220px;
+            background: var(--paper-cream);
+        }
+
+        .log-box {
+            padding: 10px 14px;
+            font-size: 1.25rem;
+            line-height: 1.3;
+            border-right: var(--border-thick);
+            overflow-y: auto;
+            background: var(--paper-cream);
+        }
+
+        .log-entry {
+            margin-bottom: 4px;
+        }
+
+        .log-entry::before {
+            content: "> ";
+            font-weight: bold;
+        }
+
+        .control-box {
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 8px;
+            background: #c0b196;
+        }
+
+        .btn-action {
+            font-family: 'Press Start 2P', monospace;
+            font-size: 0.7rem;
+            padding: 14px;
+            background: var(--paper-cream);
+            border: var(--border-thick);
+            color: var(--ink-black);
+            cursor: pointer;
+            text-transform: uppercase;
+            box-shadow: 2px 2px 0px var(--ink-black);
+            transition: opacity 0.3s ease, transform 0.1s;
+        }
+
+        /* KONDISI DISABLE DARI KLIK SAAT MASIH MAIN */
+        .btn-action.disabled {
+            pointer-events: none;
+            cursor: default;
+        }
+
+        .btn-action:active {
+            transform: translate(2px, 2px);
+            box-shadow: 0px 0px 0px var(--ink-black);
+        }
+
+        .btn-action:hover {
+            background: var(--ink-black);
+            color: var(--paper-cream);
+        }
+
+        /* ANIMASI KEDAP KEDIP SAAT GAME OVER / NYAWA SELESAI */
+        @keyframes retryBlink {
+            0%, 100% { opacity: 1.0; }
+            50% { opacity: 0.4; }
+        }
+
+        .btn-critical {
+            animation: retryBlink 0.8s infinite;
+            background: var(--ink-accent) !important;
+            color: #ffffff !important;
+        }
+    </style>
+</head>
+<body>
+
+  <!-- Element Audio BGM -->
+  <audio id="bgm" src="BGM.mp3" preload="auto" loop></audio>
+
+  <div class="screen">
+    
+    <!-- SPLASH SCREEN / LOGO -->
+    <div class="splash-overlay" id="splash">
+      <img src="LOGO.png" alt="Nirimajinasi Logo" class="splash-logo">
+      <div class="splash-instructions">
+        "Membuka lembaran buku yang dibakar oleh kemunduran..."<br><br>
+        Selamatkan buku literasi dari kobaran api sebelum pikiran manusia sepenuhnya dikuasai dogmatisme.
+      </div>
+      
+      <!-- FORM INPUT NAMA -->
+      <div class="input-container">
+        <label for="investigator-input" class="input-label">NAMA INVESTIGATOR:</label>
+        <input type="text" id="investigator-input" class="pixel-input" value="RIYYAD" maxlength="12" placeholder="NAMA..." autocomplete="off">
+      </div>
+
+      <button class="btn-action" onclick="initGame()">[ MEMULAI INVESTIGASI? ]</button>
+    </div>
+
+    <!-- TOP HEADER -->
+    <div class="top-bar">
+      <span class="title">NIRIMAJINASI // 00 CASE</span>
+      <div class="top-stats">
+        <div class="stat-box">TIME: <span id="time-val">0:00</span></div>
+        <div class="stat-box">REASON: <span id="reason-val">100%</span></div>
+      </div>
+    </div>
+
+    <!-- MAIN GAME AREA -->
+    <div class="main-grid">
+      
+      <!-- LEFT PANEL -->
+      <div class="left-panel">
+        
+        <!-- SECTION 1: INVESTIGATOR -->
+        <div class="panel-header" id="investigator-header">INVESTIGATOR: RIYYAD</div>
+        <div class="stat-row">
+          <span>SAVED:</span>
+          <span id="score-val" style="font-weight: bold;">0</span>
+        </div>
+        <div class="stat-row">
+          <span>STA:</span>
+          <span>10/10</span>
+        </div>
+
+        <!-- SECTION 2: ANOMALY -->
+        <div class="panel-header" style="margin-top: 10px;">ANOMALY</div>
+        <div style="font-size: 1.3rem; font-weight: bold; margin-bottom: 2px;">KEMUNDURAN</div>
+        
+        <div class="stat-row">
+          <span>THREAT:</span>
+          <span id="threat-val">HIGH</span>
+        </div>
+        <div class="stat-row">
+          <span>TYPE:</span>
+          <span>DOGMA</span>
+        </div>
+
+        <div style="font-size: 1.05rem; margin-top: 4px; line-height: 1.1;">
+          "Tak punya empati. Tak pernah membaca. Tak pernah berfikir."
+        </div>
+
+        <div class="doom-meter-container">
+          <div class="doom-title">NIRIMAJINASI DOOM</div>
+          <div class="doom-bar">
+            <div class="doom-fill" id="doom-fill"></div>
+          </div>
+          <div style="font-size: 0.95rem; text-align: right; margin-top: 2px;" id="doom-text">0%</div>
+        </div>
+      </div>
+
+      <!-- CENTER PANEL (ARENA) -->
+      <div class="center-panel" id="arena">
+        <div class="arena-scene"></div>
+        <div class="fire-container" id="fire"></div>
+      </div>
+
+    </div>
+
+    <!-- BOTTOM PANEL -->
+    <div class="bottom-panel">
+      <div class="log-box" id="log-box">
+        <div class="log-entry">Hari belum terlalu terang. Lampu baca menyala.</div>
+        <div class="log-entry">Buku binatang yang melawan... masih sangat berkesan.</div>
+      </div>
+
+      <div class="control-box">
+        <!-- TOMBOL RETRY TERKUNCI SAMPAI TAHAP GAME OVER -->
+        <button class="btn-action disabled" id="retry-btn" onclick="startGame()">MENGULAMG</button>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    const bookAssets = [
+      { img: 'BUKU 1.png', category: 'Geografis' },
+      { img: 'BUKU 2.png', category: 'Statistik' },
+      { img: 'BUKU 3.png', category: 'Sosial' },
+      { img: 'BUKU 4.png', category: 'Psikologis' },
+      { img: 'BUKU 5.png', category: 'Hukum' }
+    ];
+    
+    const fireAssets = ['API 1.png', 'API 2.png', 'API 3.png'];
+
+    let score = 0;
+    let doom = 0;
+    let isPlaying = false;
+    let spawnTimeoutId = null;
+    let gameInterval = null;
+    let fireAnimInterval = null;
+    let currentFireFrame = 0;
+    let investigatorName = "RIYYAD";
+
+    let currentFallSpeed = 3.5;   
+    const maxFallSpeed = 10.0;     
+    let currentSpawnRate = 950;   
+    const minSpawnRate = 350;     
+
+    const arena = document.getElementById('arena');
+    const fireEl = document.getElementById('fire');
+    const scoreVal = document.getElementById('score-val');
+    const reasonVal = document.getElementById('reason-val');
+    const timeVal = document.getElementById('time-val');
+    const threatVal = document.getElementById('threat-val');
+    const doomFill = document.getElementById('doom-fill');
+    const doomText = document.getElementById('doom-text');
+    const logBox = document.getElementById('log-box');
+    const splash = document.getElementById('splash');
+    const retryBtn = document.getElementById('retry-btn');
+    const bgm = document.getElementById('bgm');
+    const investigatorInput = document.getElementById('investigator-input');
+    const investigatorHeader = document.getElementById('investigator-header');
+
+    updateRetryOpacity();
+
+    function animateFire() {
+      currentFireFrame = (currentFireFrame + 1) % fireAssets.length;
+      fireEl.style.backgroundImage = `url('${fireAssets[currentFireFrame]}')`;
+    }
+    fireAnimInterval = setInterval(animateFire, 180);
+
+    bgm.ontimeupdate = function() {
+      let mins = Math.floor(bgm.currentTime / 60);
+      let secs = Math.floor(bgm.currentTime % 60);
+      if (secs < 10) secs = '0' + secs;
+      timeVal.innerText = `${mins}:${secs}`;
+    };
+
+    function addLog(text, isAlert = false) {
+      const entry = document.createElement('div');
+      entry.className = 'log-entry';
+      if(isAlert) entry.style.color = 'var(--ink-accent)';
+      entry.innerText = text;
+      logBox.appendChild(entry);
+      logBox.scrollTop = logBox.scrollHeight;
+    }
+
+    // Fungsi Pengatur Opacity & Klik Tombol Retry Dinamis
+    function updateRetryOpacity() {
+      let calcOpacity = 0.15 + (doom / 100) * 0.85;
+      retryBtn.style.opacity = calcOpacity.toFixed(2);
+
+      if (doom >= 100) {
+        retryBtn.classList.remove('disabled');
+        retryBtn.classList.add('btn-critical');
+      } else {
+        retryBtn.classList.add('disabled');
+        retryBtn.classList.remove('btn-critical');
+      }
+    }
+
+    function initGame() {
+      const inputVal = investigatorInput.value.trim();
+      if (inputVal !== "") {
+        investigatorName = inputVal.toUpperCase();
+      } else {
+        investigatorName = "UNKNOWN";
+      }
+      
+      investigatorHeader.innerText = `INVESTIGATOR: ${investigatorName}`;
+      splash.style.display = 'none';
+      startGame();
+    }
+
+    function startGame() {
+      if (isPlaying && doom < 100) return;
+
+      if (isPlaying) {
+        clearTimeout(spawnTimeoutId);
+        clearInterval(gameInterval);
+        document.querySelectorAll('.falling-book').forEach(b => b.remove());
+      }
+
+      isPlaying = true;
+      score = 0;
+      doom = 0;
+      
+      currentFallSpeed = 3.5;
+      currentSpawnRate = 950;
+
+      scoreVal.innerText = score;
+      reasonVal.innerText = '100%';
+      threatVal.innerText = 'HIGH';
+      threatVal.style.color = '';
+      doomFill.style.width = '0%';
+      doomText.innerText = '0%';
+      
+      updateRetryOpacity();
+
+      if (bgm.paused) {
+        bgm.currentTime = 0;
+        bgm.play().catch(e => console.log("Audio play error: ", e));
+      }
+
+      addLog(`Investigator ${investigatorName} memulai tugas. Api kemunduran melahap buku-buku!`);
+
+      scheduleNextSpawn();
+      gameInterval = setInterval(gameLoop, 35);
+    }
+
+    function scheduleNextSpawn() {
+      if (!isPlaying) return;
+      createFallingBook();
+      spawnTimeoutId = setTimeout(scheduleNextSpawn, currentSpawnRate);
+    }
+
+    function createFallingBook() {
+      if (!isPlaying) return;
+
+      const book = document.createElement('div');
+      book.className = 'falling-book';
+      
+      const selectedBook = bookAssets[Math.floor(Math.random() * bookAssets.length)];
+      book.style.backgroundImage = `url('${selectedBook.img}')`;
+
+      const maxX = arena.clientWidth - 65;
+      book.style.left = Math.max(10, Math.floor(Math.random() * maxX)) + 'px';
+      book.style.top = '-60px';
+
+      book.onclick = function() {
+        score++;
+        scoreVal.innerText = score;
+        addLog(`Berhasil mengamankan buku ${selectedBook.category} [#${score}]`);
+        
+        updateDifficulty();
+
+        book.remove();
+      };
+
+      arena.appendChild(book);
+    }
+
+    function updateDifficulty() {
+      if (currentFallSpeed < maxFallSpeed) {
+        currentFallSpeed += 0.12; 
+      }
+
+      if (currentSpawnRate > minSpawnRate) {
+        currentSpawnRate -= 18; 
+      }
+
+      if (currentFallSpeed > 7.5) {
+        threatVal.innerText = 'CRITICAL';
+        threatVal.style.color = 'var(--ink-accent)';
+      } else if (currentFallSpeed > 5.5) {
+        threatVal.innerText = 'EXTREME';
+      }
+    }
+
+    function gameLoop() {
+      const books = document.querySelectorAll('.falling-book');
+
+      books.forEach(book => {
+        let top = parseFloat(book.style.top || -60);
+        
+        top += currentFallSpeed; 
+        book.style.top = top + 'px';
+
+        if (top > arena.clientHeight - 90) {
+          book.remove();
+          doom += 10;
+          if (doom > 100) doom = 100;
+
+          doomFill.style.width = doom + '%';
+          doomText.innerText = doom + '%';
+          reasonVal.innerText = (100 - doom) + '%';
+
+          updateRetryOpacity();
+
+          addLog('Buku terbakar! Kemunduran meningkat.', true);
+
+          if (doom >= 100) {
+            endGame();
+          }
+        }
+      });
+    }
+
+    function endGame() {
+      isPlaying = false;
+      clearTimeout(spawnTimeoutId);
+      clearInterval(gameInterval);
+      document.querySelectorAll('.falling-book').forEach(b => b.remove());
+
+      // Lagu BGM tidak di-pause agar tetap berjalan kontinu saat kalah
+
+      addLog(`END OF REASON: Nirimajinasi menguasai pikiran ${investigatorName}. Tak ada lagi yang membaca.`, true);
+      updateRetryOpacity();
+    }
+  </script>
+</body>
+</html>
