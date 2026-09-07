@@ -1,0 +1,1 @@
+Ini merupakan antarmuka game hub retro 8-bit berkonsep arcade/OS shell klasik bernama "Melankolia In Retro". Terinspirasi dari album Dongker (Melankolia Radikal), situs ini memuat carousel berisi 11 mini-game bertema kaset pita/NES yang bisa dimainkan langsung via iframe lengkap dengan efek suara synthesized.
