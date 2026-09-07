@@ -24,7 +24,7 @@
       cursor: url('CURSOR.png'), auto !important;
     }
 
-    button, input, select, a, .nes-card, .start-prompt-btn, .nav-arrow-btn, .settings-btn-center, .settings-close, .nes-card-container {
+    button, input, select, a, .nes-card, .start-prompt-btn, .nav-arrow-btn, .settings-btn-center, .settings-close, .nes-card-container, .widget-toggle-btn {
       cursor: url('CURSOR.png'), pointer !important;
     }
 
@@ -553,11 +553,11 @@
     }
 
     /* ========================================================= */
-    /* FLOATING MUSIC WIDGET KANAN BAWAH                         */
+    /* FLOATING MUSIC WIDGET (KANAN ATAS)                        */
     /* ========================================================= */
     .music-widget-container {
       position: absolute;
-      bottom: 12px;
+      top: 12px;
       right: 16px;
       width: 450px;
       max-width: calc(100vw - 32px);
@@ -588,22 +588,114 @@
 
     .music-widget-iframe {
       width: 100%;
-      height: 175px;
+      height: 250px;
       border: 2px solid #000;
       background: #000;
       display: block;
     }
 
     /* Sembunyikan player saat game dimainkan */
-    .nes-menu-overlay.hidden ~ .music-widget-container {
+    .nes-menu-overlay.hidden ~ .music-widget-container,
+    .nes-menu-overlay.hidden ~ .credit-widget-container {
       display: none;
     }
 
     @media (max-width: 768px) {
       .music-widget-container {
         width: 300px;
-        bottom: 8px;
+        top: 8px;
         right: 8px;
+      }
+      .music-widget-iframe {
+        height: 200px;
+      }
+    }
+
+    /* ========================================================= */
+    /* FLOATING CREDIT PHOTO WIDGET (KIRI BAWAH)                 */
+    /* ========================================================= */
+    .credit-widget-container {
+      position: absolute;
+      bottom: 12px;
+      left: 16px;
+      width: 260px;
+      max-width: calc(100vw - 32px);
+      background: #c0c0c0;
+      border-top: 3px solid #ffffff;
+      border-left: 3px solid #ffffff;
+      border-right: 3px solid #000000;
+      border-bottom: 3px solid #000000;
+      box-shadow: 5px 5px 0px #000000;
+      padding: 6px;
+      z-index: 38;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .credit-widget-header {
+      font-size: 8px;
+      color: #050505;
+      font-weight: bold;
+      background: #e0e0e0;
+      border: 1px solid #808080;
+      padding: 4px 6px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .widget-toggle-btn {
+      background: #c0c0c0;
+      border-top: 1px solid #fff;
+      border-left: 1px solid #fff;
+      border-right: 1px solid #404040;
+      border-bottom: 1px solid #404040;
+      font-family: 'Press Start 2P', monospace;
+      font-size: 9px;
+      color: #000;
+      padding: 1px 4px;
+      line-height: 1;
+    }
+
+    .widget-toggle-btn:hover {
+      background: #00f0ff;
+    }
+
+    .credit-widget-body {
+      width: 100%;
+      height: 220px;
+      border: 2px solid #000;
+      background: #000;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+    }
+
+    .credit-widget-body img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      image-rendering: pixelated;
+      display: block;
+    }
+
+    .credit-widget-container.minimized .credit-widget-body {
+      display: none;
+    }
+
+    @media (max-width: 768px) {
+      .credit-widget-container {
+        width: 200px;
+        bottom: 8px;
+        left: 8px;
+      }
+      .credit-widget-body {
+        height: 160px;
       }
     }
 
@@ -825,7 +917,18 @@
       <div class="music-widget-header">
         🎵 LISTEN TO THEIR ALBUM TOO!
       </div>
-      <iframe class="music-widget-iframe" allow="autoplay *; encrypted-media *;" frameborder="0" sandbox="allow-forms allow-popups allow-same-origin allow-scripts allow-storage-access-by-user-activation allow-top-navigation-by-user-activation" src="https://embed.music.apple.com/id/album/melankolia-radikal/6801554707"></iframe>
+      <iframe class="music-widget-iframe" allow="autoplay *; encrypted-media *;" frameborder="0" height="250" sandbox="allow-forms allow-popups allow-same-origin allow-scripts allow-storage-access-by-user-activation allow-top-navigation-by-user-activation" src="https://embed.music.apple.com/id/album/melankolia-radikal/6801554707"></iframe>
+    </div>
+
+    <!-- FLOATING CREDIT PHOTO WIDGET (KIRI BAWAH) -->
+    <div id="creditWidget" class="credit-widget-container">
+      <div class="credit-widget-header">
+        <span>📷 ARTWORK</span>
+        <button id="creditToggleBtn" class="widget-toggle-btn" onclick="toggleCreditWidget()">-</button>
+      </div>
+      <div class="credit-widget-body">
+        <img src="CREDIT.png" alt="Developer Credit Photo" onerror="this.src='image_6a5a27.jpg';">
+      </div>
     </div>
 
     <!-- IFRAME GAME -->
@@ -1049,6 +1152,17 @@
 
     let selectedIndex = -1;
     let isScrolling = false;
+
+    function toggleCreditWidget() {
+      const widget = document.getElementById('creditWidget');
+      const btn = document.getElementById('creditToggleBtn');
+      widget.classList.toggle('minimized');
+      if (widget.classList.contains('minimized')) {
+        btn.textContent = '+';
+      } else {
+        btn.textContent = '-';
+      }
+    }
 
     function closeWarning() {
       playButtonSound('select');
