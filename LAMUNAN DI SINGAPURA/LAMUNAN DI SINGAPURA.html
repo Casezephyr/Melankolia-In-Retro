@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lamunan Ringan di Singapura</title>
+  <!-- Google Font Pixel Art: Press Start 2P -->
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #6b94e6;
+      /* Diubah dari sky1.jpg ke sky1.png agar konsisten */
+      background-image: url('sky1.png');
+      background-size: cover;
+      background-position: center;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      overflow: hidden;
+      font-family: 'Press Start 2P', monospace;
+      /* Transisi mulus untuk perubahan background luar */
+      transition: background-image 1.5s ease-in-out, background-color 1.5s ease-in-out;
+    }
+    canvas {
+      border: 4px solid #3c6ab8;
+      image-rendering: pixelated;
+      background-color: #6b94e6;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+      cursor: pointer;
+      transition: border-color 1.5s ease-in-out;
+    }
+  </style>
+</head>
+<body>
+
+<canvas id="gameCanvas" width="1280" height="720"></canvas>
+
+<script>
+  const canvas = document.getElementById("gameCanvas");
+  const ctx = canvas.getContext("2d");
+
+  // Status Game State: 'START' atau 'PLAYING'
+  let gameState = 'START';
+
+  // 0. Memuat Elemen Audio Musik (BGM)
+  const bgm = new Audio('bgm.mp3');
+  bgm.loop = true; 
+  bgm.volume = 0.6; 
+
+  // 1. Memuat Gambar Title / Logo
+  const logoImage = new Image();
+  logoImage.src = 'logo.png';
+  let isLogoLoaded = false;
+  logoImage.onload = () => { isLogoLoaded = true; };
+
+  // 2. Memuat 3 Gambar Background Game & Sky Body (Siang, Sore, Malam)
+  const bgSources = ['BG1.png', 'BG2.png', 'BG3.png'];
+  const skySources = ['sky1.png', 'sky2.png', 'sky3.png'];
+  const skyColors = ['#6b94e6', '#d97742', '#141b2d'];
+  const borderColors = ['#3c6ab8', '#9e4325', '#1a263d'];
+
+  const bgImages = [];
+  let loadedBgCount = 0;
+
+  bgSources.forEach((src) => {
+    const img = new Image();
+    img.src = src;
+    img.onload = () => { loadedBgCount++; };
+    bgImages.push(img);
+  });
+
+  // Preload gambar sky agar langsung siap tampil dari awal tanpa delay
+  const skyImages = [];
+  skySources.forEach((src, idx) => {
+    const img = new Image();
+    img.src = src;
+    img.onload = () => {
+      // Jika sky1.png selesai dimuat, langsung terapkan ke body
+      if (idx === 0) {
+        document.body.style.backgroundImage = `url('${skySources[0]}')`;
+        document.body.style.backgroundColor = skyColors[0];
+        canvas.style.borderColor = borderColors[0];
+      }
+    };
+    skyImages.push(img);
+  });
+
+  // Logika Pergantian Fase Waktu (Siang -> Sore -> Malam)
+  let currentBgIndex = 0;
+  let nextBgIndex = 1;
+  let fadeAlpha = 0;
+  let isFading = false;
+  const timePerPhase = 15000; // Berganti setiap 15 detik
+
+  function changeDayPhase() {
+    if (isFading) return;
+    nextBgIndex = (currentBgIndex + 1) % bgSources.length;
+    isFading = true;
+    fadeAlpha = 0;
+
+    // Ganti Background & Warna Body luar bersamaan
+    document.body.style.backgroundImage = `url('${skySources[nextBgIndex]}')`;
+    document.body.style.backgroundColor = skyColors[nextBgIndex];
+    canvas.style.borderColor = borderColors[nextBgIndex];
+  }
+
+  // Jalankan timer pergantian fase waktu
+  setInterval(changeDayPhase, timePerPhase);
+
+  // 3. Memuat Sprite Karakter Idle
+  const charImages = {
+    idleFront: new Image(),
+    idleBack: new Image()
+  };
+
+  charImages.idleFront.src = 'idle_front.png';
+  charImages.idleBack.src = 'idle_back.png';
+
+  // Memuat 7 Frame Animasi Berjalan
+  const walkFrames = [];
+  const totalWalkFrames = 7;
+
+  for (let i = 1; i <= totalWalkFrames; i++) {
+    const img = new Image();
+    img.src = `walk${i}.png`;
+    walkFrames.push(img);
+  }
+
+  // Posisi Dunia, Kecepatan & Variable Animasi
+  let worldX = 0; 
+  let walkSpeed = 2.8; 
+  let animTimer = 0;
+  let direction = 0;
+  let facingRight = true;
+  let idleTime = 0;
+  let blinkTimer = 0;
+
+  // Input Keyboard
+  const keys = { left: false, right: false };
+
+  // Handler untuk memulai game dan memutar lagu BGM
+  function startGame() {
+    if (gameState === 'START') {
+      gameState = 'PLAYING';
+      
+      bgm.play().catch(error => {
+        console.log("Gagal memutar audio otomatis:", error);
+      });
+    }
+  }
+
+  window.addEventListener("keydown", (e) => {
+    if (gameState === 'START') {
+      startGame();
+    } else {
+      if (e.key === "ArrowRight" || e.key === "d" || e.key === "D") keys.right = true;
+      if (e.key === "ArrowLeft" || e.key === "a" || e.key === "A") keys.left = true;
+    }
+  });
+
+  window.addEventListener("keyup", (e) => {
+    if (gameState === 'PLAYING') {
+      if (e.key === "ArrowRight" || e.key === "d" || e.key === "D") keys.right = false;
+      if (e.key === "ArrowLeft" || e.key === "a" || e.key === "A") keys.left = false;
+    }
+  });
+
+  canvas.addEventListener("click", startGame);
+
+  // Helper function untuk merender layer background seamless
+  function renderBgLayer(imgObj, opacity = 1.0) {
+    if (!imgObj || !imgObj.complete || imgObj.naturalWidth === 0) return;
+
+    let bgScale = canvas.height / imgObj.height;
+    let scaledWidth = imgObj.width * bgScale;
+    let currentWorldX = worldX * 0.5;
+    let bgOffsetX = Math.floor(currentWorldX % scaledWidth);
+    if (bgOffsetX < 0) bgOffsetX += scaledWidth;
+
+    ctx.save();
+    ctx.globalAlpha = opacity;
+    for (let x = -bgOffsetX; x < canvas.width + scaledWidth; x += scaledWidth) {
+      ctx.drawImage(
+        imgObj, 
+        0, 0, imgObj.width, imgObj.height,
+        Math.floor(x), 0, Math.ceil(scaledWidth), canvas.height
+      );
+    }
+    ctx.restore();
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // 1. RENDER BACKGROUND CANVAS (Dengan Efek Cross-Fade Dissolve)
+    if (loadedBgCount > 0) {
+      // Gambar BG aktif saat ini
+      renderBgLayer(bgImages[currentBgIndex], 1.0);
+
+      // Transisi memudar ke BG berikutnya
+      if (isFading) {
+        fadeAlpha += 0.015; // Kecepatan efek pemudaran
+        if (fadeAlpha >= 1.0) {
+          fadeAlpha = 1.0;
+          currentBgIndex = nextBgIndex;
+          isFading = false;
+        }
+        renderBgLayer(bgImages[nextBgIndex], fadeAlpha);
+      }
+    }
+
+    // ==========================================
+    // TAMPILAN 1: START SCREEN
+    // ==========================================
+    if (gameState === 'START') {
+      ctx.fillStyle = "rgba(0, 0, 0, 0.4)";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      if (isLogoLoaded) {
+        const logoWidth = 550;
+        const logoScale = logoWidth / logoImage.width;
+        const logoHeight = logoImage.height * logoScale;
+        
+        let logoX = (canvas.width / 2) - (logoWidth / 2);
+        let logoY = 100;
+
+        ctx.drawImage(logoImage, logoX, logoY, logoWidth, logoHeight);
+      }
+
+      blinkTimer += 0.04;
+      if (Math.sin(blinkTimer) > 0) {
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "16px 'Press Start 2P', monospace";
+        ctx.textAlign = "center";
+        
+        ctx.shadowColor = "rgba(0,0,0,1)";
+        ctx.shadowBlur = 4;
+        ctx.fillText("- TEKAN TOMBOL ATAU KLIK UNTUK MULAI -", canvas.width / 2, 580);
+        ctx.shadowBlur = 0; 
+      }
+    } 
+
+    // ==========================================
+    // TAMPILAN 2: GAMEPLAY GAME
+    // ==========================================
+    else if (gameState === 'PLAYING') {
+      direction = 0;
+      if (keys.right) {
+        direction = 1;
+        facingRight = true;
+      } else if (keys.left) {
+        direction = -1;
+        facingRight = false;
+      }
+
+      worldX += direction * walkSpeed;
+
+      if (direction === 0) {
+        idleTime++;
+      } else {
+        idleTime = 0;
+      }
+
+      // Logika Pemilihan Sprite Karakter
+      let currentSprite;
+      if (direction !== 0) {
+        animTimer += 0.04; 
+        let frameIndex = Math.floor(animTimer) % totalWalkFrames;
+        currentSprite = walkFrames[frameIndex];
+      } else {
+        animTimer = 0;
+        if (idleTime > 180) {
+          currentSprite = charImages.idleBack;
+        } else {
+          currentSprite = charImages.idleFront;
+        }
+      }
+
+      // Render Karakter
+      if (currentSprite && currentSprite.complete && currentSprite.naturalWidth !== 0) {
+        const charHeight = 220; 
+        const charScale = charHeight / currentSprite.height;
+        const charWidth = currentSprite.width * charScale;
+
+        let charX = Math.floor((canvas.width / 2) - (charWidth / 2));
+        let charY = 695 - charHeight; 
+
+        ctx.save();
+        
+        if (!facingRight && direction !== 0) {
+          ctx.translate(canvas.width / 2, charY);
+          ctx.scale(-1, 1);
+          ctx.translate(-(canvas.width / 2), -charY);
+        }
+
+        ctx.drawImage(
+          currentSprite,
+          0, 0, currentSprite.width, currentSprite.height,
+          charX, charY, charWidth, charHeight
+        );
+
+        ctx.restore();
+      }
+    }
+
+    requestAnimationFrame(draw);
+  }
+
+  draw();
+</script>
+
+</body>
+</html>
