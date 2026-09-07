@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Retro Top-Down Runner - Selepas Hujan</title>
+    <!-- Import Font Pixel Retro dari Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            background-color: #111; 
+            color: #fff;
+            font-family: 'Press Start 2P', 'Courier New', monospace;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Pseudo-element untuk zoom-in & rotate 90 derajat 1 gambar Jalan.png */
+        body::before {
+            content: "";
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 100vh;
+            height: 100vw;
+            background-image: url('Jalan.png');
+            background-repeat: no-repeat;
+            background-size: cover;
+            background-position: center;
+            transform: translate(-50%, -50%) rotate(90deg);
+            z-index: -1;
+            filter: brightness(0.7); 
+        }
+
+        /* Canvas dengan border hijau rumput */
+        #gameCanvas {
+            border: 4px solid #4CAF50;
+            box-shadow: none;
+            background-color: #222;
+            width: 92vw;
+            max-width: 750px;
+            height: 82vh;
+            max-height: 1050px;
+            object-fit: fill;
+            display: block;
+            position: relative;
+            z-index: 1;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+    <canvas id="gameCanvas" width="480" height="720"></canvas>
+
+    <!-- Elemen Audio untuk Lagu Latar (Looping) -->
+    <audio id="bgMusic" src="bgm.mp3" loop preload="auto"></audio>
+
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const bgMusic = document.getElementById('bgMusic');
+
+const WIDTH = canvas.width;
+const HEIGHT = canvas.height;
+
+// Memuat Gambar Aset
+const playerCarImg = new Image();
+playerCarImg.src = 'Mobil.png';
+
+const roadImg = new Image();
+roadImg.src = 'Jalan.png';
+
+const coneImg = new Image();
+coneImg.src = 'Cone.png';
+
+const holeImg = new Image();
+holeImg.src = 'Lubang.png';
+
+const flowerImg = new Image();
+flowerImg.src = 'Bunga.png';
+
+const logoImg = new Image();
+logoImg.src = 'Logo.png'; // Aset Logo "SELEPAS HUJAN"
+
+// Status Game State: 'START', 'PLAYING', atau 'GAMEOVER'
+let gameState = 'START';
+
+// Parameter Speed & Kesulitan Dynamic
+const INITIAL_SPEED = 20; // Kecepatan awal
+const MAX_SPEED = 65;     // Batas kecepatan maksimal agar tetap playable
+let speed = INITIAL_SPEED;
+
+let score = 0;
+const MAX_LIVES = 5;
+let lives = MAX_LIVES; // Dimulai dari 5 Nyawa/Hit
+let isCrashed = false;
+let crashTimer = 0;
+let blinkTimer = 0;
+
+// System Hujan Pixelated
+const rainDrops = [];
+const numRainDrops = 15; // Jumlah tetes hujan
+
+for (let i = 0; i < numRainDrops; i++) {
+    rainDrops.push({
+        x: Math.random() * (WIDTH + 100) - 50,
+        y: Math.random() * HEIGHT,
+        length: Math.random() * 2 + 8, // Panjang garis hujan
+        speed: Math.random() * 10 + 13,  // Kecepatan jatuh
+        opacity: Math.random() * 0.4 + 0.3 // Transparansi
+    });
+}
+
+// 4 Lajur Jalan
+const lanes = [117, 197, 277, 357];
+let currentLane = 1;
+let playerY = HEIGHT - 120;
+let targetX = lanes[currentLane];
+let playerX = lanes[currentLane];
+
+let roadOffsetY = 0;
+let obstacles = [];
+let powerups = [];
+
+// Array untuk menyimpan pop-up teks angka (+10)
+let floatingTexts = [];
+
+// Melanjutkan game -> Darah Kembali Full (Kecepatan dikurangi sedikit agar ada penyesuaian)
+function continueGame() {
+    lives = MAX_LIVES;
+    isCrashed = false;
+    crashTimer = 0;
+    speed = Math.max(INITIAL_SPEED, speed - 5); // Mengurangi sedikit kecapatan saat respawn
+    obstacles = []; // Bersihkan rintangan di sekitar mobil agar tidak langsung nabrak lagi
+    gameState = 'PLAYING';
+}
+
+function resetGame() {
+    score = 0;
+    speed = INITIAL_SPEED; // Reset kecepatan kembali ke awal
+    lives = MAX_LIVES;
+    isCrashed = false;
+    crashTimer = 0;
+    currentLane = 1;
+    playerX = lanes[currentLane];
+    obstacles = [];
+    powerups = [];
+    floatingTexts = [];
+}
+
+function handleStartOrContinue() {
+    if (gameState === 'START') {
+        resetGame();
+        gameState = 'PLAYING';
+        bgMusic.play().catch(error => {
+            console.log("Autoplay dicegah browser:", error);
+        });
+    } else if (gameState === 'GAMEOVER') {
+        continueGame(); // Lanjut main dengan darah full
+    }
+}
+
+// Input Handler Keyboard
+window.addEventListener('keydown', e => {
+    if (gameState === 'START' || gameState === 'GAMEOVER') {
+        handleStartOrContinue();
+        return;
+    }
+
+    if (isCrashed) return;
+    if (e.key === 'ArrowLeft' && currentLane > 0) {
+        currentLane--;
+    } else if (e.key === 'ArrowRight' && currentLane < lanes.length - 1) {
+        currentLane++;
+    }
+});
+
+// Input Handler Klik Mouse (Desktop)
+window.addEventListener('click', e => {
+    if (gameState === 'START' || gameState === 'GAMEOVER') {
+        handleStartOrContinue();
+        return;
+    }
+
+    if (isCrashed) return;
+    let screenMiddle = window.innerWidth / 2;
+    if (e.clientX < screenMiddle && currentLane > 0) {
+        currentLane--;
+    } else if (e.clientX >= screenMiddle && currentLane < lanes.length - 1) {
+        currentLane++;
+    }
+});
+
+// Kontrol Sentuh / Touch Screen (HP)
+window.addEventListener('touchstart', e => {
+    if (gameState === 'START' || gameState === 'GAMEOVER') {
+        handleStartOrContinue();
+        return;
+    }
+
+    if (isCrashed) return;
+    let touchX = e.touches[0].clientX;
+    let screenMiddle = window.innerWidth / 2;
+
+    if (touchX < screenMiddle && currentLane > 0) {
+        currentLane--;
+    } else if (touchX >= screenMiddle && currentLane < lanes.length - 1) {
+        currentLane++;
+    }
+});
+
+function gameLoop() {
+    update();
+    render();
+    requestAnimationFrame(gameLoop);
+}
+
+function spawnEntities() {
+    // Frekuensi spawn bertambah seiring kecepatan bertambah
+    let spawnRate = 0.025 + (speed * 0.0005);
+    
+    if (Math.random() < spawnRate && obstacles.length < 6) {
+        let laneIdx = Math.floor(Math.random() * 4);
+        let type = Math.random() > 0.5 ? 'cone' : 'hole';
+        
+        let lastObs = obstacles[obstacles.length - 1];
+        if (!lastObs || lastObs.y > 110) {
+            obstacles.push({
+                x: lanes[laneIdx],
+                y: -100,
+                type: type
+            });
+        }
+    }
+
+    if (Math.random() < 0.012 && powerups.length < 2) {
+        let laneIdx = Math.floor(Math.random() * 4);
+        powerups.push({
+            x: lanes[laneIdx],
+            y: -50
+        });
+    }
+}
+
+function updateRain() {
+    for (let i = 0; i < rainDrops.length; i++) {
+        let drop = rainDrops[i];
+        drop.y += drop.speed;
+        drop.x -= drop.speed * 0.25;
+
+        if (drop.y > HEIGHT) {
+            drop.y = -20;
+            drop.x = Math.random() * (WIDTH + 100) - 50;
+        }
+    }
+}
+
+function update() {
+    blinkTimer++;
+    updateRain();
+
+    if (gameState === 'START' || gameState === 'GAMEOVER') {
+        return;
+    }
+
+    if (isCrashed) {
+        crashTimer--;
+        if (crashTimer <= 0) {
+            isCrashed = false;
+        }
+        return;
+    }
+
+    // Incremental Akselerasi Kecepatan (Semakin lama semakin cepat)
+    if (speed < MAX_SPEED) {
+        speed += 0.008; // Menambah kecepatan bertahap di setiap frame
+    }
+
+    // Pergerakan Lajur
+    targetX = lanes[currentLane];
+    playerX += (targetX - playerX) * 0.25;
+
+    // Pergerakan Vertikal Gambar Jalan
+    roadOffsetY += speed * 0.12;
+
+    spawnEntities();
+
+    // Update Rintangan
+    for (let i = obstacles.length - 1; i >= 0; i--) {
+        let obs = obstacles[i];
+        obs.y += speed * 0.12;
+
+        if (Math.abs(obs.x - playerX) < 22 && Math.abs(obs.y - playerY) < 28) {
+            isCrashed = true;
+            crashTimer = 30;
+            lives--; // Berkurang 1 Nyawa saat menabrak
+            obstacles.splice(i, 1);
+
+            // Trigger Game Over
+            if (lives <= 0) {
+                gameState = 'GAMEOVER';
+            }
+            continue;
+        }
+
+        if (obs.y > HEIGHT + 100) obstacles.splice(i, 1);
+    }
+
+    // Update Item Bunga
+    for (let i = powerups.length - 1; i >= 0; i--) {
+        let p = powerups[i];
+        p.y += speed * 0.12;
+
+        if (Math.abs(p.x - playerX) < 22 && Math.abs(p.y - playerY) < 24) {
+            score += 10;
+
+            floatingTexts.push({
+                x: p.x,
+                y: p.y,
+                alpha: 1.0,
+                text: '+10'
+            });
+
+            powerups.splice(i, 1);
+            continue;
+        }
+
+        if (p.y > HEIGHT + 50) powerups.splice(i, 1);
+    }
+
+    // Update Floating Text
+    for (let i = floatingTexts.length - 1; i >= 0; i--) {
+        let ft = floatingTexts[i];
+        ft.y -= 1.5;
+        ft.alpha -= 0.025;
+
+        if (ft.alpha <= 0) {
+            floatingTexts.splice(i, 1);
+        }
+    }
+
+    score += 1;
+}
+
+function renderRain() {
+    ctx.save();
+    ctx.lineWidth = 2;
+    rainDrops.forEach(drop => {
+        ctx.strokeStyle = `rgba(180, 225, 255, ${drop.opacity})`;
+        ctx.beginPath();
+        ctx.moveTo(drop.x, drop.y);
+        ctx.lineTo(drop.x - drop.length * 0.25, drop.y + drop.length);
+        ctx.stroke();
+    });
+    ctx.restore();
+}
+
+function render() {
+    // 1. Gambar Background Jalan
+    if (roadImg.complete && roadImg.naturalWidth !== 0) {
+        let scrollY = roadOffsetY % HEIGHT;
+        ctx.drawImage(roadImg, 0, scrollY - HEIGHT, WIDTH, HEIGHT);
+        ctx.drawImage(roadImg, 0, scrollY, WIDTH, HEIGHT);
+    } else {
+        ctx.fillStyle = '#444';
+        ctx.fillRect(0, 0, WIDTH, HEIGHT);
+    }
+
+    // Jika dalam posisi START (Belum Mulai)
+    if (gameState === 'START') {
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
+        ctx.fillRect(0, 0, WIDTH, HEIGHT);
+
+        renderRain();
+
+        // Render Logo "SELEPAS HUJAN"
+        if (logoImg.complete && logoImg.naturalWidth !== 0) {
+            let logoWidth = 420;
+            let logoHeight = (logoImg.naturalHeight / logoImg.naturalWidth) * logoWidth;
+            ctx.drawImage(logoImg, (WIDTH - logoWidth) / 2, HEIGHT / 3 - logoHeight / 2, logoWidth, logoHeight);
+        } else {
+            ctx.fillStyle = '#00ccff';
+            ctx.font = '22px "Press Start 2P"';
+            ctx.textAlign = 'center';
+            ctx.fillText('SELEPAS HUJAN', WIDTH / 2, HEIGHT / 3);
+        }
+
+        // Teks Kedip "PRESS OR CLICK TO START"
+        if (Math.floor(blinkTimer / 25) % 2 === 0) {
+            ctx.fillStyle = '#ffffff';
+            ctx.font = '12px "Press Start 2P"';
+            ctx.textAlign = 'center';
+            ctx.strokeStyle = '#000000';
+            ctx.lineWidth = 4;
+            
+            ctx.strokeText('PRESS OR CLICK TO START', WIDTH / 2, HEIGHT / 2 + 100);
+            ctx.fillText('PRESS OR CLICK TO START', WIDTH / 2, HEIGHT / 2 + 100);
+        }
+        return;
+    }
+
+    // Jika Game Over Custom (Kedok Layar Lanjut)
+    if (gameState === 'GAMEOVER') {
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
+        ctx.fillRect(0, 0, WIDTH, HEIGHT);
+
+        renderRain();
+
+        // Teks Pengganti "GAME OVER" -> "TIDAK ADA YANG PEDULI"
+        ctx.fillStyle = '#ff3333';
+        ctx.font = '16px "Press Start 2P"';
+        ctx.textAlign = 'center';
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 4;
+        ctx.strokeText('TIDAK ADA YANG PEDULI', WIDTH / 2, HEIGHT / 3);
+        ctx.fillText('TIDAK ADA YANG PEDULI', WIDTH / 2, HEIGHT / 3);
+
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '14px "Press Start 2P"';
+        ctx.strokeText('SCORE: ' + score, WIDTH / 2, HEIGHT / 2 - 10);
+        ctx.fillText('SCORE: ' + score, WIDTH / 2, HEIGHT / 2 - 10);
+
+        // Teks Pengganti "PRESS TO CONTINUE" -> "Kita terus berlari sampai mampus"
+        if (Math.floor(blinkTimer / 25) % 2 === 0) {
+            ctx.fillStyle = '#00ffcc';
+            ctx.font = '10px "Press Start 2P"';
+            ctx.strokeText('Lanjutkan dan terus berlari sampai mampus', WIDTH / 2, HEIGHT / 2 + 80);
+            ctx.fillText('Lanjutkan dan terus berlari sampai mampus', WIDTH / 2, HEIGHT / 2 + 80);
+        }
+        return;
+    }
+
+    // 2. Gambar Item Bunga.png
+    powerups.forEach(p => {
+        drawFlowerImage(p.x, p.y);
+    });
+
+    // 3. Gambar Rintangan
+    obstacles.forEach(obs => {
+        if (obs.type === 'cone') {
+            drawConeImage(obs.x, obs.y);
+        } else if (obs.type === 'hole') {
+            drawHoleImage(obs.x, obs.y);
+        }
+    });
+
+    // 4. Gambar Mobil Player
+    if (!isCrashed || Math.floor(crashTimer / 4) % 2 === 0) {
+        drawPlayerCar(playerX, playerY);
+    }
+
+    // 5. Render Floating Text Pixel (+10)
+    floatingTexts.forEach(ft => {
+        ctx.save();
+        ctx.globalAlpha = ft.alpha;
+        ctx.fillStyle = '#ffe600';
+        ctx.font = '14px "Press Start 2P"';
+        ctx.textAlign = 'center';
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 3;
+        ctx.strokeText(ft.text, ft.x, ft.y);
+        ctx.fillText(ft.text, ft.x, ft.y);
+        ctx.restore();
+    });
+
+    // Render Efek Garis Hujan di atas Gameplay
+    renderRain();
+
+    // 6. HUD Atas (Skor & Bar Nyawa 5 Hit)
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '16px "Press Start 2P"';
+    ctx.fillText(String(score).padStart(5, '0'), 50, 42);
+
+    // Frame Bar Nyawa (Merah)
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(WIDTH - 130, 20, 110, 20);
+    ctx.fillStyle = '#ff3333';
+    ctx.fillRect(WIDTH - 128, 22, (lives / MAX_LIVES) * 106, 16);
+}
+
+function drawPlayerCar(x, y) {
+    let carWidth = 42;
+    let carHeight = 68;
+
+    ctx.save();
+    ctx.translate(x, y);
+
+    if (playerCarImg.complete && playerCarImg.naturalWidth !== 0) {
+        ctx.drawImage(playerCarImg, -carWidth / 2, -carHeight / 2, carWidth, carHeight);
+    } else {
+        ctx.fillStyle = '#0088cc';
+        ctx.fillRect(-carWidth / 2, -carHeight / 2, carWidth, carHeight);
+    }
+
+    ctx.restore();
+}
+
+function drawFlowerImage(x, y) {
+    let w = 34;
+    let h = 38;
+    ctx.save();
+    ctx.translate(x, y);
+    if (flowerImg.complete && flowerImg.naturalWidth !== 0) {
+        ctx.drawImage(flowerImg, -w / 2, -h / 2, w, h);
+    } else {
+        ctx.fillStyle = '#00ccff';
+        ctx.beginPath();
+        ctx.arc(0, 0, 10, 0, Math.PI * 2);
+        ctx.fill();
+    }
+    ctx.restore();
+}
+
+function drawConeImage(x, y) {
+    let w = 36;
+    let h = 38;
+    ctx.save();
+    ctx.translate(x, y);
+    if (coneImg.complete && coneImg.naturalWidth !== 0) {
+        ctx.drawImage(coneImg, -w / 2, -h / 2, w, h);
+    } else {
+        ctx.fillStyle = '#ff5500';
+        ctx.fillRect(-14, -14, 28, 28);
+    }
+    ctx.restore();
+}
+
+function drawHoleImage(x, y) {
+    let w = 62;
+    let h = 58;
+    ctx.save();
+    ctx.translate(x, y);
+    if (holeImg.complete && holeImg.naturalWidth !== 0) {
+        ctx.drawImage(holeImg, -w / 2, -h / 2, w, h);
+    } else {
+        ctx.fillStyle = '#111';
+        ctx.beginPath();
+        ctx.arc(0, 0, 16, 0, Math.PI * 2);
+        ctx.fill();
+    }
+    ctx.restore();
+}
+
+// Jalankan Game
+gameLoop();
+</script>
+
+</body>
+</html>
