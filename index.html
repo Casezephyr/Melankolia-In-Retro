@@ -559,7 +559,7 @@
       position: absolute;
       top: 12px;
       right: 16px;
-      width: 450px;
+      width: 320px;
       max-width: calc(100vw - 32px);
       background: #c0c0c0;
       border-top: 3px solid #ffffff;
@@ -572,23 +572,33 @@
       display: flex;
       flex-direction: column;
       gap: 6px;
+      transition: all 0.2s ease;
     }
 
     .music-widget-header {
       font-size: 8px;
       color: #000080;
       font-weight: bold;
-      text-align: center;
       background: #e0e0e0;
       border: 1px solid #808080;
-      padding: 5px;
+      padding: 4px 6px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
       text-transform: uppercase;
       letter-spacing: 0.5px;
     }
 
+    .music-widget-body {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      transition: all 0.2s ease;
+    }
+
     .music-widget-iframe {
       width: 100%;
-      height: 250px;
+      height: 175px;
       border: 2px solid #000;
       background: #000;
       display: block;
@@ -607,6 +617,10 @@
       box-shadow: inset 1px 1px 0px #fff;
     }
 
+    .music-widget-container.minimized .music-widget-body {
+      display: none;
+    }
+
     /* Sembunyikan player & photo credit saat game dimainkan */
     .nes-menu-overlay.hidden ~ .music-widget-container,
     .nes-menu-overlay.hidden ~ .credit-widget-container {
@@ -615,17 +629,17 @@
 
     @media (max-width: 768px) {
       .music-widget-container {
-        width: 300px;
+        width: 260px;
         top: 8px;
         right: 8px;
       }
       .music-widget-iframe {
-        height: 200px;
+        height: 150px;
       }
     }
 
     /* ========================================================= */
-    /* FLOATING CREDIT PHOTO WIDGET (KIRI BAWAH)                 */
+    /* FLOATING CREDIT PHOTO WIDGET (KIRI BAWAH)                  */
     /* ========================================================= */
     .credit-widget-container {
       position: absolute;
@@ -876,7 +890,7 @@
       </div>
       <div class="warning-body">
         <span style="font-size:24px; margin-bottom:10px; display:block;">💻</span>
-        SANGAT DIREKOMENDASIKAN MENGGUNAKAN LAPTOP ATAU PC UNTUK PENGALAMAN BERMAIN TERBAIK!
+        SANGAT DIREKOMENDASIKAN MENGGUNAKAN DEKSTOP UNTUK BERMAIN!
       </div>
       <button class="btn-nes-nav" style="width:100%; text-align:center;" onclick="closeWarning()">[ SAYA MENGERTI ]</button>
     </div>
@@ -926,15 +940,18 @@
     </div>
 
     <!-- FLOATING APPLE MUSIC PLAYER -->
-    <div class="music-widget-container">
+    <div id="musicWidget" class="music-widget-container">
       <div class="music-widget-header">
-        🎵 LISTEN TO THEIR ALBUM TOO!
+        <span>🎵 LISTEN ALBUM</span>
+        <button id="musicToggleBtn" class="widget-toggle-btn" onclick="toggleMusicWidget()">-</button>
       </div>
-      <iframe class="music-widget-iframe" allow="autoplay *; encrypted-media *;" frameborder="0" height="250" sandbox="allow-forms allow-popups allow-same-origin allow-scripts allow-storage-access-by-user-activation allow-top-navigation-by-user-activation" src="https://embed.music.apple.com/id/album/melankolia-radikal/6801554707"></iframe>
-      
-      <!-- RETRO NOTE BANNER -->
-      <div class="music-note-banner">
-        [!] PAUSE LAGU SEBELUM MEMULAI GAME!
+      <div class="music-widget-body">
+        <iframe class="music-widget-iframe" allow="autoplay *; encrypted-media *;" frameborder="0" sandbox="allow-forms allow-popups allow-same-origin allow-scripts allow-storage-access-by-user-activation allow-top-navigation-by-user-activation" src="https://embed.music.apple.com/id/album/melankolia-radikal/6801554707"></iframe>
+        
+        <!-- RETRO NOTE BANNER -->
+        <div class="music-note-banner">
+          [!] PAUSE LAGU SEBELUM MEMULAI GAME!
+        </div>
       </div>
     </div>
 
@@ -1174,6 +1191,17 @@
     function toggleCreditWidget() {
       const widget = document.getElementById('creditWidget');
       const btn = document.getElementById('creditToggleBtn');
+      widget.classList.toggle('minimized');
+      if (widget.classList.contains('minimized')) {
+        btn.textContent = '+';
+      } else {
+        btn.textContent = '-';
+      }
+    }
+
+    function toggleMusicWidget() {
+      const widget = document.getElementById('musicWidget');
+      const btn = document.getElementById('musicToggleBtn');
       widget.classList.toggle('minimized');
       if (widget.classList.contains('minimized')) {
         btn.textContent = '+';
